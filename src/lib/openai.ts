@@ -45,7 +45,7 @@ export async function translateToEnglish(turkishText: string, apiKey: string): P
         },
       ],
       temperature: 0.3,
-      max_tokens: 1000,
+      max_completion_tokens: 1000,
     }),
   });
 
