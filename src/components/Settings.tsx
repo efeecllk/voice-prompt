@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { open } from '@tauri-apps/plugin-shell';
 import { useAppStore } from '../stores/appStore';
 import { BackIcon, EyeIcon, EyeOffIcon } from './icons';
 
@@ -63,14 +64,13 @@ export default function Settings({ onBack }: SettingsProps) {
           </div>
           <p className="mt-1.5 text-xs text-surface-400 dark:text-surface-500">
             Get your API key from{' '}
-            <a
-              href="https://platform.openai.com/api-keys"
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => open('https://platform.openai.com/api-keys')}
               className="text-accent-500 hover:text-accent-600 dark:text-accent-400 dark:hover:text-accent-300 underline-offset-2 hover:underline"
             >
               platform.openai.com
-            </a>
+            </button>
           </p>
         </div>
 
