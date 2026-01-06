@@ -44,7 +44,7 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       // Settings
       apiKey: '',
-      shortcut: 'CommandOrControl+Shift+R',
+      shortcut: 'CommandOrControl+Shift+Space',
       theme: 'light',
 
       // History

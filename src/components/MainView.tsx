@@ -2,6 +2,7 @@ import Recorder from './Recorder';
 import ResultCard from './ResultCard';
 import History from './History';
 import { useAppStore } from '../stores/appStore';
+import { SettingsIcon, AppLogoIcon } from './icons';
 
 interface MainViewProps {
   onSettingsClick: () => void;
@@ -11,19 +12,21 @@ export default function MainView({ onSettingsClick }: MainViewProps) {
   const { currentTurkish, currentEnglish, error, apiKey } = useAppStore();
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-surface-50 dark:bg-surface-900">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🎙️</span>
-          <span className="font-semibold">Voice Prompt</span>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-surface-200 dark:border-surface-800">
+        <div className="flex items-center gap-2.5">
+          <AppLogoIcon size={22} className="text-surface-600 dark:text-surface-300" />
+          <span className="text-base font-medium text-surface-800 dark:text-surface-100">
+            Voice Prompt
+          </span>
         </div>
         <button
           onClick={onSettingsClick}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          className="p-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"
           title="Settings"
         >
-          ⚙️
+          <SettingsIcon size={18} className="text-surface-400 dark:text-surface-500" />
         </button>
       </div>
 
@@ -31,8 +34,8 @@ export default function MainView({ onSettingsClick }: MainViewProps) {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* API Key Warning */}
         {!apiKey && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 text-sm text-yellow-800 dark:text-yellow-200">
-            ⚠️ Please add your OpenAI API key in Settings
+          <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 text-sm text-warning-dark dark:text-warning-light">
+            Please add your OpenAI API key in Settings
           </div>
         )}
 
@@ -41,8 +44,8 @@ export default function MainView({ onSettingsClick }: MainViewProps) {
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-800 dark:text-red-200">
-            ❌ {error}
+          <div className="bg-error/10 border border-error/30 rounded-lg p-3 text-sm text-error-dark dark:text-error-light">
+            {error}
           </div>
         )}
 

@@ -20,7 +20,7 @@ function App() {
   }, [theme]);
 
   return (
-    <div className="h-screen w-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    <div className="h-screen w-screen bg-surface-50 dark:bg-surface-900 text-surface-800 dark:text-surface-100">
       {view === 'main' ? (
         <MainView onSettingsClick={() => setView('settings')} />
       ) : (

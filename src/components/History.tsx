@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAppStore } from '../stores/appStore';
+import { HistoryIcon, CopyIcon, CheckIcon, TrashIcon } from './icons';
 
 export default function History() {
   const { history, clearHistory } = useAppStore();
@@ -22,13 +23,15 @@ export default function History() {
   return (
     <div className="mt-4">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
-          <span>📜</span> History
+        <h3 className="text-xs font-medium text-surface-400 dark:text-surface-500 flex items-center gap-1.5 uppercase tracking-wider">
+          <HistoryIcon size={12} />
+          History
         </h3>
         <button
           onClick={clearHistory}
-          className="text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+          className="flex items-center gap-1 text-xs text-surface-400 hover:text-error dark:hover:text-error-light transition-colors"
         >
+          <TrashIcon size={12} />
           Clear
         </button>
       </div>
@@ -37,29 +40,32 @@ export default function History() {
         {history.map((item) => (
           <div
             key={item.id}
-            className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 text-sm group"
+            className="flex items-start justify-between bg-surface-50 dark:bg-surface-800/50 rounded-lg px-3 py-2.5 text-sm group"
           >
-            <div className="flex-1 min-w-0 mr-2">
-              <span className="text-gray-500 dark:text-gray-400 truncate block">
-                "{item.turkishText}"
-              </span>
-              <span className="text-gray-400 dark:text-gray-500 mx-1">→</span>
-              <span className="text-gray-900 dark:text-gray-100 truncate block">
-                "{item.englishText}"
-              </span>
+            <div className="flex-1 min-w-0 mr-2 space-y-1">
+              <p className="text-surface-400 dark:text-surface-500 text-xs truncate">
+                {item.turkishText}
+              </p>
+              <p className="text-surface-700 dark:text-surface-200 text-xs truncate font-medium">
+                {item.englishText}
+              </p>
             </div>
             <button
               onClick={() => handleCopy(item.id, item.englishText)}
               className={`
-                p-1 rounded transition-all flex-shrink-0
+                p-1.5 rounded-md transition-all flex-shrink-0 mt-0.5
                 ${copiedId === item.id
-                  ? 'text-green-500'
-                  : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 opacity-0 group-hover:opacity-100'
+                  ? 'text-success'
+                  : 'text-surface-300 dark:text-surface-600 hover:text-surface-500 dark:hover:text-surface-400 opacity-0 group-hover:opacity-100'
                 }
               `}
               title="Copy English"
             >
-              {copiedId === item.id ? '✓' : '📋'}
+              {copiedId === item.id ? (
+                <CheckIcon size={14} />
+              ) : (
+                <CopyIcon size={14} />
+              )}
             </button>
           </div>
         ))}
