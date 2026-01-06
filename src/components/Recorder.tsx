@@ -1,3 +1,4 @@
+import { useEffect, useCallback } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 
@@ -5,22 +6,35 @@ export default function Recorder() {
   const { isRecording, isProcessing, apiKey } = useAppStore();
   const { startRecording, stopRecording } = useAudioRecorder();
 
-  const handleClick = () => {
+  const isDisabled = !apiKey || isProcessing;
+
+  const handleToggle = useCallback(() => {
     if (isProcessing) return;
 
     if (isRecording) {
       stopRecording();
-    } else {
+    } else if (apiKey) {
       startRecording();
     }
-  };
+  }, [isRecording, isProcessing, apiKey, startRecording, stopRecording]);
 
-  const isDisabled = !apiKey || isProcessing;
+  // Space key listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !e.repeat && e.target === document.body) {
+        e.preventDefault();
+        handleToggle();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleToggle]);
 
   return (
     <div className="flex flex-col items-center py-4">
       <button
-        onClick={handleClick}
+        onClick={handleToggle}
         disabled={isDisabled}
         className={`
           w-20 h-20 rounded-full flex items-center justify-center text-3xl

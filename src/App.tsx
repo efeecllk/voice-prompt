@@ -2,10 +2,14 @@ import { useState, useEffect } from 'react';
 import MainView from './components/MainView';
 import Settings from './components/Settings';
 import { useAppStore } from './stores/appStore';
+import { useGlobalShortcut } from './hooks/useGlobalShortcut';
 
 function App() {
   const [view, setView] = useState<'main' | 'settings'>('main');
   const { theme } = useAppStore();
+
+  // Register global shortcut
+  useGlobalShortcut();
 
   useEffect(() => {
     if (theme === 'dark') {
