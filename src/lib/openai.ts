@@ -32,7 +32,7 @@ export async function translateToEnglish(turkishText: string, apiKey: string): P
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-5-nano',
+      model: 'gpt-4.1-nano',
       messages: [
         {
           role: 'system',
@@ -44,6 +44,8 @@ export async function translateToEnglish(turkishText: string, apiKey: string): P
           content: turkishText,
         },
       ],
+      temperature: 0.3,
+      max_tokens: 1000,
     }),
   });
 
