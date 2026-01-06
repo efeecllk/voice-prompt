@@ -73,6 +73,7 @@ export function useAudioRecorder() {
       mediaRecorder.start(100); // Collect data every 100ms
       setRecording(true);
     } catch (err) {
+      setRecording(false);
       const message = err instanceof Error ? err.message : 'Failed to access microphone';
       setError(message);
     }

@@ -32,7 +32,7 @@ export async function translateToEnglish(turkishText: string, apiKey: string): P
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'gpt-5-nano',
       messages: [
         {
           role: 'system',

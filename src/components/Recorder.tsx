@@ -18,10 +18,10 @@ export default function Recorder() {
     }
   }, [isRecording, isProcessing, apiKey, startRecording, stopRecording]);
 
-  // Space key listener
+  // Space key listener - respects disabled state
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !e.repeat && e.target === document.body) {
+      if (e.code === 'Space' && !e.repeat && e.target === document.body && !isDisabled) {
         e.preventDefault();
         handleToggle();
       }
@@ -29,7 +29,7 @@ export default function Recorder() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleToggle]);
+  }, [handleToggle, isDisabled]);
 
   return (
     <div className="flex flex-col items-center py-4">
@@ -57,12 +57,14 @@ export default function Recorder() {
         )}
       </button>
 
-      <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-        {isProcessing
-          ? 'Processing...'
-          : isRecording
-            ? 'Recording... (click to stop)'
-            : 'Click to record (or press Space)'}
+      <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+        {!apiKey
+          ? 'Add API key in Settings first'
+          : isProcessing
+            ? 'Processing...'
+            : isRecording
+              ? 'Recording... (click to stop)'
+              : 'Click to record (or press Space)'}
       </p>
     </div>
   );

@@ -5,7 +5,7 @@
   "identifier": "com.voiceprompt.app",
   "build": {
     "beforeDevCommand": "pnpm dev",
-    "devUrl": "https://localhost:1420",
+    "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist"
   },

@@ -4,7 +4,7 @@ import { useAppStore } from '../stores/appStore';
 import { useAudioRecorder } from './useAudioRecorder';
 
 export function useGlobalShortcut() {
-  const { shortcut, isRecording } = useAppStore();
+  const { shortcut } = useAppStore();
   const { startRecording, stopRecording } = useAudioRecorder();
 
   useEffect(() => {
