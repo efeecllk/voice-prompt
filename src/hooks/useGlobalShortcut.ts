@@ -1,12 +1,10 @@
 import { useEffect } from 'react';
 import { register, unregister } from '@tauri-apps/plugin-global-shortcut';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../stores/appStore';
-import { useAudioRecorder } from './useAudioRecorder';
 
 export function useGlobalShortcut() {
   const { shortcut } = useAppStore();
-  const { startRecording, stopRecording } = useAudioRecorder();
 
   useEffect(() => {
     let currentShortcut = shortcut;
@@ -15,18 +13,8 @@ export function useGlobalShortcut() {
       try {
         await register(currentShortcut, async (event) => {
           if (event.state === 'Pressed') {
-            // First, show and focus the window
-            const window = getCurrentWindow();
-            await window.show();
-            await window.setFocus();
-
-            // Then handle recording
-            const store = useAppStore.getState();
-            if (store.isRecording) {
-              stopRecording();
-            } else if (!store.isProcessing && store.apiKey) {
-              startRecording();
-            }
+            // Only show and focus window - user will click to record
+            await invoke('show_and_focus_window');
           }
         });
         console.log(`Global shortcut registered: ${currentShortcut}`);
@@ -40,5 +28,5 @@ export function useGlobalShortcut() {
     return () => {
       unregister(currentShortcut).catch(console.error);
     };
-  }, [shortcut, startRecording, stopRecording]);
+  }, [shortcut]);
 }

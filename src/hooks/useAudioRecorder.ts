@@ -80,9 +80,20 @@ export function useAudioRecorder() {
   }, [apiKey, clearCurrent, setRecording, setProcessing, setResult, setError, addToHistory]);
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-      setRecording(false);
+    // Always set recording to false first
+    setRecording(false);
+
+    try {
+      if (mediaRecorderRef.current) {
+        if (mediaRecorderRef.current.state !== 'inactive') {
+          mediaRecorderRef.current.stop();
+        }
+        // Also stop any active stream tracks
+        mediaRecorderRef.current.stream?.getTracks().forEach(track => track.stop());
+        mediaRecorderRef.current = null;
+      }
+    } catch (err) {
+      console.error('Error stopping recording:', err);
     }
   }, [setRecording]);
 

@@ -31,7 +31,7 @@ export default function MainView({ onSettingsClick }: MainViewProps) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {/* API Key Warning */}
         {!apiKey && (
           <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 text-sm text-warning-dark dark:text-warning-light">

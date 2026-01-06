@@ -33,7 +33,7 @@ export default function Recorder() {
   }, [handleToggle, isDisabled]);
 
   return (
-    <div className="flex flex-col items-center py-6">
+    <div className="flex flex-col items-center py-4">
       {/* Button container with pulse ring */}
       <div className="relative">
         {/* Animated ring for recording state */}
