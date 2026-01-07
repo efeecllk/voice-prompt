@@ -130,6 +130,18 @@ export default function Settings({ onBack }: SettingsProps) {
           </label>
           <div className="flex gap-2">
             <button
+              onClick={() => setTheme('system')}
+              className={`
+                flex-1 py-2.5 px-3 rounded-lg border text-sm font-medium transition-all
+                ${theme === 'system'
+                  ? 'bg-surface-900 dark:bg-surface-100 border-surface-900 dark:border-surface-100 text-white dark:text-surface-900'
+                  : 'bg-surface-50 dark:bg-surface-800 border-surface-200 dark:border-surface-700 text-surface-500 dark:text-surface-400 hover:border-surface-300 dark:hover:border-surface-600'
+                }
+              `}
+            >
+              System
+            </button>
+            <button
               onClick={() => setTheme('light')}
               className={`
                 flex-1 py-2.5 px-3 rounded-lg border text-sm font-medium transition-all

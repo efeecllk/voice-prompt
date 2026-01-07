@@ -45,7 +45,7 @@ interface AppState {
   apiKeyLoaded: boolean;
   sourceLanguage: string;
   shortcut: string;
-  theme: 'light' | 'dark';
+  theme: 'light' | 'dark' | 'system';
 
   // History
   history: HistoryItem[];
@@ -62,7 +62,7 @@ interface AppState {
   setApiKey: (key: string) => Promise<void>;
   setSourceLanguage: (language: string) => void;
   setShortcut: (shortcut: string) => void;
-  setTheme: (theme: 'light' | 'dark') => void;
+  setTheme: (theme: 'light' | 'dark' | 'system') => void;
   setRecording: (isRecording: boolean) => void;
   setProcessing: (isProcessing: boolean) => void;
   setResult: (turkish: string, english: string) => void;
@@ -82,7 +82,7 @@ export const useAppStore = create<AppState>()(
       apiKeyLoaded: false,
       sourceLanguage: 'tr',
       shortcut: 'CommandOrControl+Shift+Space',
-      theme: 'light',
+      theme: 'system',
 
       // History
       history: [],

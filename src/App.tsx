@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import MainView from './components/MainView';
 import Settings from './components/Settings';
 import { useAppStore } from './stores/appStore';
@@ -16,13 +16,29 @@ function App() {
     loadApiKey();
   }, [loadApiKey]);
 
-  useEffect(() => {
-    if (theme === 'dark') {
+  // Apply theme based on preference
+  const applyTheme = useCallback((isDark: boolean) => {
+    if (isDark) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, [theme]);
+  }, []);
+
+  useEffect(() => {
+    if (theme === 'system') {
+      // Use system preference
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      applyTheme(mediaQuery.matches);
+
+      // Listen for system theme changes
+      const handler = (e: MediaQueryListEvent) => applyTheme(e.matches);
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
+    } else {
+      applyTheme(theme === 'dark');
+    }
+  }, [theme, applyTheme]);
 
   return (
     <div className="h-screen w-screen bg-surface-50 dark:bg-surface-900 text-surface-800 dark:text-surface-100">
