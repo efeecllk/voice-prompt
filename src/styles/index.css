@@ -39,6 +39,18 @@ body {
   background: #475569;
 }
 
+/* Optimize dropdown scroll performance */
+[data-headlessui-state] {
+  contain: layout style;
+}
+
+/* GPU acceleration for scrollable lists */
+.overflow-auto {
+  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
+  transform: translateZ(0);
+}
+
 /* Prevent text selection during recording */
 .no-select {
   user-select: none;
