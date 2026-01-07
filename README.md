@@ -22,7 +22,7 @@ That's it! Open Voice Prompt from Applications.
 
 **Requirements:**
 - macOS 10.15+ (Catalina or later)
-- Apple Silicon (M1/M2/M3)
+- Apple Silicon
 - OpenAI API key ([Get one here](https://platform.openai.com/api-keys))
 
 ### Update
