@@ -4,7 +4,13 @@ A lightweight macOS menu bar app that converts speech to text and translates it 
 
 **Ralph Wiggum Mode**: Turn simple voice requests into detailed, well-structured prompts ready for Claude Code.
 
+
 <!-- Upload video by dragging into GitHub editor to get user-attachments URL -->
+
+
+https://github.com/user-attachments/assets/787b7a3f-6cbf-4a99-9eaf-13b02c35835a
+
+
 
 ![macOS](https://img.shields.io/badge/macOS-10.15+-blue?logo=apple)
 ![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-M1%2FM2%2FM3-black?logo=apple)
