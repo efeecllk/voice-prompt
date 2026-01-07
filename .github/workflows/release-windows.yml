@@ -49,15 +49,16 @@ jobs:
 
             See the [changelog](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
 
-            ## Download
+            ## Download (Windows)
 
-            - **Windows**: Download the `.exe` or `.msi` file below
-            - **macOS**: Download the `.dmg` file below
+            - `.msi` - Windows Installer (recommended)
+            - `.exe` - NSIS Installer
 
-            ## Installation (Windows)
+            ## Installation
 
             1. Download the `.msi` installer
             2. Run the installer
             3. Open Voice Prompt from Start Menu
+            4. Configure your OpenAI API key in Settings
           releaseDraft: false
           prerelease: false
