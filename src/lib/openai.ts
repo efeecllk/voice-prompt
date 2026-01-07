@@ -1,4 +1,5 @@
 import { SUPPORTED_LANGUAGES } from '../stores/appStore';
+import { getPromptById, processPrompt } from '../prompts';
 
 const WHISPER_API_URL = 'https://api.openai.com/v1/audio/transcriptions';
 const CHAT_API_URL = 'https://api.openai.com/v1/chat/completions';
@@ -42,17 +43,34 @@ export function getLanguageName(code: string): string {
   return lang?.name || code;
 }
 
-export async function translateToEnglish(
+export interface ProcessResult {
+  text: string;
+  outputFormat: 'text' | 'code-block';
+  codeBlockLang?: string;
+}
+
+export async function processWithPrompt(
   sourceText: string,
   apiKey: string,
-  sourceLanguage: string = 'tr'
-): Promise<string> {
-  // If source is already English, return as-is
-  if (sourceLanguage === 'en') {
-    return sourceText;
+  sourceLanguage: string = 'tr',
+  promptId: string = 'default-translation'
+): Promise<ProcessResult> {
+  const template = getPromptById(promptId);
+  if (!template) {
+    throw new Error(`Prompt template not found: ${promptId}`);
+  }
+
+  // If using default translation and source is already English, return as-is
+  if (promptId === 'default-translation' && sourceLanguage === 'en') {
+    return {
+      text: sourceText,
+      outputFormat: 'text',
+    };
   }
 
   const languageName = getLanguageName(sourceLanguage);
+  const systemPrompt = processPrompt(template, languageName);
+
   const response = await fetch(CHAT_API_URL, {
     method: 'POST',
     headers: {
@@ -64,7 +82,7 @@ export async function translateToEnglish(
       messages: [
         {
           role: 'system',
-          content: `You are a translator. Translate the following ${languageName} text to English. Only output the translation, nothing else. Keep the same tone and style.`,
+          content: systemPrompt,
         },
         {
           role: 'user',
@@ -72,15 +90,31 @@ export async function translateToEnglish(
         },
       ],
       temperature: 0.3,
-      max_tokens: 1000,
+      max_tokens: 2000,
     }),
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error?.message || `Translation API error: ${response.status}`);
+    throw new Error(error.error?.message || `API error: ${response.status}`);
   }
 
   const data = await response.json();
-  return data.choices?.[0]?.message?.content?.trim() || '';
+  const text = data.choices?.[0]?.message?.content?.trim() || '';
+
+  return {
+    text,
+    outputFormat: template.outputFormat || 'text',
+    codeBlockLang: template.codeBlockLang,
+  };
+}
+
+// Legacy function for backwards compatibility
+export async function translateToEnglish(
+  sourceText: string,
+  apiKey: string,
+  sourceLanguage: string = 'tr'
+): Promise<string> {
+  const result = await processWithPrompt(sourceText, apiKey, sourceLanguage, 'default-translation');
+  return result.text;
 }

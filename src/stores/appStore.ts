@@ -44,6 +44,7 @@ interface AppState {
   apiKey: string;
   apiKeyLoaded: boolean;
   sourceLanguage: string;
+  outputPrompt: string;
   shortcut: string;
   theme: 'light' | 'dark' | 'system';
 
@@ -61,6 +62,7 @@ interface AppState {
   loadApiKey: () => Promise<void>;
   setApiKey: (key: string) => Promise<void>;
   setSourceLanguage: (language: string) => void;
+  setOutputPrompt: (promptId: string) => void;
   setShortcut: (shortcut: string) => void;
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
   setRecording: (isRecording: boolean) => void;
@@ -81,6 +83,7 @@ export const useAppStore = create<AppState>()(
       apiKey: '',
       apiKeyLoaded: false,
       sourceLanguage: 'tr',
+      outputPrompt: 'default-translation',
       shortcut: 'CommandOrControl+Shift+Space',
       theme: 'system',
 
@@ -106,6 +109,7 @@ export const useAppStore = create<AppState>()(
         }
       },
       setSourceLanguage: (sourceLanguage) => set({ sourceLanguage }),
+      setOutputPrompt: (outputPrompt) => set({ outputPrompt }),
       setShortcut: (shortcut) => set({ shortcut }),
       setTheme: (theme) => set({ theme }),
       setRecording: (isRecording) => set({ isRecording }),
@@ -137,6 +141,7 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         // Note: apiKey is NOT stored here - it's securely stored in macOS Keychain
         sourceLanguage: state.sourceLanguage,
+        outputPrompt: state.outputPrompt,
         shortcut: state.shortcut,
         theme: state.theme,
         history: state.history,

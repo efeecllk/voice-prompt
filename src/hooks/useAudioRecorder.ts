@@ -1,6 +1,6 @@
 import { useRef, useCallback } from 'react';
 import { useAppStore } from '../stores/appStore';
-import { transcribeAudio, translateToEnglish } from '../lib/openai';
+import { transcribeAudio, processWithPrompt } from '../lib/openai';
 
 export function useAudioRecorder() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -9,6 +9,7 @@ export function useAudioRecorder() {
   const {
     apiKey,
     sourceLanguage,
+    outputPrompt,
     setRecording,
     setProcessing,
     setResult,
@@ -60,16 +61,17 @@ export function useAudioRecorder() {
             return;
           }
 
-          // Step 2: Translate to English
-          const englishText = await translateToEnglish(
+          // Step 2: Process with selected prompt
+          const result = await processWithPrompt(
             sourceText,
             apiKey,
-            detectedLanguage
+            detectedLanguage,
+            outputPrompt
           );
 
           // Set results and add to history
-          setResult(sourceText, englishText);
-          addToHistory(sourceText, englishText);
+          setResult(sourceText, result.text);
+          addToHistory(sourceText, result.text);
         } catch (err) {
           const message = err instanceof Error ? err.message : 'An error occurred';
           setError(message);
@@ -86,7 +88,7 @@ export function useAudioRecorder() {
       const message = err instanceof Error ? err.message : 'Failed to access microphone';
       setError(message);
     }
-  }, [apiKey, sourceLanguage, clearCurrent, setRecording, setProcessing, setResult, setError, addToHistory]);
+  }, [apiKey, sourceLanguage, outputPrompt, clearCurrent, setRecording, setProcessing, setResult, setError, addToHistory]);
 
   const stopRecording = useCallback(() => {
     // Always set recording to false first

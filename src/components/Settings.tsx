@@ -3,15 +3,17 @@ import { open } from '@tauri-apps/plugin-shell';
 import { useAppStore } from '../stores/appStore';
 import { BackIcon, EyeIcon, EyeOffIcon, LockIcon } from './icons';
 import LanguageSelect from './LanguageSelect';
+import PromptSelect from './PromptSelect';
 
 interface SettingsProps {
   onBack: () => void;
 }
 
 export default function Settings({ onBack }: SettingsProps) {
-  const { apiKey, sourceLanguage, shortcut, theme, setApiKey, setSourceLanguage, setShortcut, setTheme } = useAppStore();
+  const { apiKey, sourceLanguage, outputPrompt, shortcut, theme, setApiKey, setSourceLanguage, setOutputPrompt, setShortcut, setTheme } = useAppStore();
   const [localApiKey, setLocalApiKey] = useState(apiKey);
   const [localLanguage, setLocalLanguage] = useState(sourceLanguage);
+  const [localPrompt, setLocalPrompt] = useState(outputPrompt);
   const [localShortcut, setLocalShortcut] = useState(shortcut);
   const [showKey, setShowKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -20,6 +22,7 @@ export default function Settings({ onBack }: SettingsProps) {
     setIsSaving(true);
     await setApiKey(localApiKey);
     setSourceLanguage(localLanguage);
+    setOutputPrompt(localPrompt);
     setShortcut(localShortcut);
     setIsSaving(false);
     onBack();
@@ -96,6 +99,17 @@ export default function Settings({ onBack }: SettingsProps) {
             {localLanguage === 'auto'
               ? 'Whisper will automatically detect the language'
               : 'The language you will speak in'}
+          </p>
+        </div>
+
+        {/* Output Prompt */}
+        <div>
+          <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-2">
+            Output Format
+          </label>
+          <PromptSelect value={localPrompt} onChange={setLocalPrompt} />
+          <p className="mt-1.5 text-xs text-surface-400 dark:text-surface-500">
+            How your voice input will be processed
           </p>
         </div>
 

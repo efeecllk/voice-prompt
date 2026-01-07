@@ -1,5 +1,5 @@
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react';
-import { SUPPORTED_LANGUAGES, LanguageOption } from '../stores/appStore';
+import { SUPPORTED_LANGUAGES } from '../stores/appStore';
 
 interface LanguageSelectProps {
   value: string;
