@@ -1,0 +1,58 @@
+name: Update Homebrew Tap
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-homebrew:
+    runs-on: macos-latest
+    steps:
+      - name: Get release info
+        id: release
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"  # Remove 'v' prefix
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download DMG and calculate SHA256
+        id: sha
+        run: |
+          VERSION="${{ steps.release.outputs.version }}"
+          DMG_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/Voice.Prompt_${VERSION}_aarch64.dmg"
+
+          echo "Downloading from: $DMG_URL"
+          curl -L -o voice-prompt.dmg "$DMG_URL"
+
+          SHA256=$(shasum -a 256 voice-prompt.dmg | cut -d' ' -f1)
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+          echo "SHA256: $SHA256"
+
+      - name: Clone Homebrew tap
+        run: |
+          git clone https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/efeecllk/homebrew-voice-prompt.git
+
+      - name: Update cask
+        run: |
+          VERSION="${{ steps.release.outputs.version }}"
+          SHA256="${{ steps.sha.outputs.sha256 }}"
+
+          cd homebrew-voice-prompt
+
+          # Update version and SHA256 in cask file
+          sed -i '' "s/version \".*\"/version \"$VERSION\"/" Casks/voice-prompt.rb
+          sed -i '' "s/sha256 \".*\"/sha256 \"$SHA256\"/" Casks/voice-prompt.rb
+
+          cat Casks/voice-prompt.rb
+
+      - name: Commit and push
+        run: |
+          VERSION="${{ steps.release.outputs.version }}"
+
+          cd homebrew-voice-prompt
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+          git diff --cached --quiet || git commit -m "Update to v$VERSION"
+          git push
