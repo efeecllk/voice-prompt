@@ -96,12 +96,27 @@ pub fn run() {
             let quit_item = MenuItem::with_id(app, "quit", "Quit Voice Prompt", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&quit_item])?;
 
-            // Create tray icon using the dedicated template icon for macOS menu bar
-            let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray-icon@2x.png"))
+            // Create tray icon - use platform-specific icon
+            #[cfg(target_os = "macos")]
+            let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/macos/tray-icon@2x.png"))
                 .expect("Failed to load tray icon");
-            let _tray = TrayIconBuilder::new()
-                .icon(tray_icon)
-                .icon_as_template(true)
+            #[cfg(target_os = "windows")]
+            let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/shared/32x32.png"))
+                .expect("Failed to load tray icon");
+            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+            let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/shared/32x32.png"))
+                .expect("Failed to load tray icon");
+
+            let mut tray_builder = TrayIconBuilder::new()
+                .icon(tray_icon);
+
+            // Only use template icon on macOS
+            #[cfg(target_os = "macos")]
+            {
+                tray_builder = tray_builder.icon_as_template(true);
+            }
+
+            let _tray = tray_builder
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| {

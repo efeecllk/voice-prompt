@@ -7,6 +7,8 @@ on:
 jobs:
   update-homebrew:
     runs-on: macos-latest
+    # Only run if release contains a DMG (macOS release)
+    if: contains(toJSON(github.event.release.assets.*.name), '.dmg')
     steps:
       - name: Get release info
         id: release
