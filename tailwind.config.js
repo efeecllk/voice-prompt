@@ -19,18 +19,18 @@ export default {
           900: '#1C1917',
           950: '#0C0A09',
         },
-        // Muted Accent (Soft Violet - premium feel)
+        // Neutral Accent (matches surface palette)
         accent: {
-          50: '#FAF5FF',
-          100: '#F3E8FF',
-          200: '#E9D5FF',
-          300: '#D8B4FE',
-          400: '#A78BFA',
-          500: '#8B7EC8',
-          600: '#7C3AED',
-          700: '#6D28D9',
-          800: '#5B21B6',
-          900: '#4C1D95',
+          50: '#FAFAF9',
+          100: '#F5F5F4',
+          200: '#E7E5E4',
+          300: '#D6D3D1',
+          400: '#A8A29E',
+          500: '#78716C',
+          600: '#57534E',
+          700: '#44403C',
+          800: '#292524',
+          900: '#1C1917',
         },
         // Muted Success (Sage Green)
         success: {
