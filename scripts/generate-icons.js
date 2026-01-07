@@ -24,7 +24,7 @@ async function generateIcons() {
   for (const size of appSizes) {
     await sharp(darkJpeg)
       .resize(size, size, { fit: 'cover' })
-      .ensureAlpha()  // RGBA required by Tauri
+      .ensureAlpha()
       .png()
       .toFile(join(iconsDir, `${size}x${size}.png`));
     console.log(`   ✓ ${size}x${size}.png`);
@@ -47,33 +47,76 @@ async function generateIcons() {
   console.log('   ✓ icon.png (512x512)');
 
   // ============================================
-  // TRAY ICONS (from dark.jpeg - extract white icon)
+  // TRAY ICONS (from light.jpeg)
   // For macOS template icons: black on transparent
-  // IMPORTANT: Crop center to avoid white corners of the rounded rect
+  // light.jpeg has black icon on white background - easier to process
   // ============================================
-  console.log('\n🔲 Generating tray icons from dark.jpeg:');
+  console.log('\n🔲 Generating tray icons from light.jpeg:');
 
-  // Get the dimensions of dark.jpeg
-  const darkMeta = await sharp(darkJpeg).metadata();
-  const srcSize = Math.min(darkMeta.width, darkMeta.height);
+  // Get the metadata
+  const lightMeta = await sharp(lightJpeg).metadata();
+  const srcSize = Math.min(lightMeta.width, lightMeta.height);
 
-  // Crop 15% from each edge to remove the white corners and rounded rect edges
-  const cropMargin = Math.floor(srcSize * 0.15);
-  const cropSize = srcSize - (cropMargin * 2);
+  // Find the bounding box of the icon (non-white area)
+  // First, analyze the image to find where the icon starts
+  const { data: analysisData, info } = await sharp(lightJpeg)
+    .greyscale()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  // Find the bounding box of dark pixels (the icon)
+  let minX = info.width, maxX = 0, minY = info.height, maxY = 0;
+  const threshold = 240; // Pixels darker than this are icon
+
+  for (let y = 0; y < info.height; y++) {
+    for (let x = 0; x < info.width; x++) {
+      const idx = y * info.width + x;
+      if (analysisData[idx] < threshold) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+
+  // Add some padding around the icon
+  const padding = Math.floor((maxX - minX) * 0.1);
+  minX = Math.max(0, minX - padding);
+  minY = Math.max(0, minY - padding);
+  maxX = Math.min(info.width - 1, maxX + padding);
+  maxY = Math.min(info.height - 1, maxY + padding);
+
+  const cropWidth = maxX - minX;
+  const cropHeight = maxY - minY;
+  const cropSize2 = Math.max(cropWidth, cropHeight);
+
+  // Center the crop to make it square
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  const cropLeft = Math.max(0, Math.floor(centerX - cropSize2 / 2));
+  const cropTop = Math.max(0, Math.floor(centerY - cropSize2 / 2));
+
+  console.log(`   Icon bounding box: ${minX},${minY} to ${maxX},${maxY}`);
+  console.log(`   Cropping from: ${cropLeft},${cropTop} size: ${cropSize2}x${cropSize2}`);
 
   for (const size of [22, 44]) {
     const suffix = size === 44 ? '@2x' : '';
     const filename = `tray-icon${suffix}.png`;
 
-    // Extract center region, avoiding white corners
-    const { data } = await sharp(darkJpeg)
+    // Extract and resize the icon area
+    const { data } = await sharp(lightJpeg)
       .extract({
-        left: cropMargin,
-        top: cropMargin,
-        width: cropSize,
-        height: cropSize
+        left: cropLeft,
+        top: cropTop,
+        width: Math.min(cropSize2, info.width - cropLeft),
+        height: Math.min(cropSize2, info.height - cropTop)
       })
-      .resize(size, size, { fit: 'cover', kernel: 'lanczos3' })
+      .resize(size, size, {
+        fit: 'contain',
+        background: { r: 255, g: 255, b: 255 },
+        kernel: 'lanczos3'
+      })
       .removeAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
@@ -82,11 +125,7 @@ async function generateIcons() {
     const pixelCount = size * size;
     const newData = Buffer.alloc(pixelCount * 4);
 
-    // For dark.jpeg: white icon on dark background
-    // We want: white pixels -> black (opaque), dark pixels -> transparent
-    // Threshold: high luminance = icon, low luminance = background
-    const threshold = 180; // Pixels brighter than this are the white icon
-
+    // Convert: white/light pixels -> transparent, dark pixels -> black with varying alpha
     let srcIdx = 0;
     let dstIdx = 0;
     for (let p = 0; p < pixelCount; p++) {
@@ -96,19 +135,15 @@ async function generateIcons() {
       const luminance = (r + g + b) / 3;
       srcIdx += 3;
 
-      if (luminance > threshold) {
-        // White/light pixel (the icon) -> opaque black
-        newData[dstIdx] = 0;       // R
-        newData[dstIdx + 1] = 0;   // G
-        newData[dstIdx + 2] = 0;   // B
-        newData[dstIdx + 3] = 255; // A - fully opaque
-      } else {
-        // Dark pixel (background) -> fully transparent
-        newData[dstIdx] = 0;
-        newData[dstIdx + 1] = 0;
-        newData[dstIdx + 2] = 0;
-        newData[dstIdx + 3] = 0;   // A - fully transparent
-      }
+      // Use luminance to calculate alpha (inverse relationship)
+      // Darker pixels = more opaque, lighter pixels = more transparent
+      // This preserves anti-aliasing!
+      const alpha = Math.max(0, 255 - luminance);
+
+      newData[dstIdx] = 0;       // R (always black)
+      newData[dstIdx + 1] = 0;   // G
+      newData[dstIdx + 2] = 0;   // B
+      newData[dstIdx + 3] = alpha; // A - based on darkness
       dstIdx += 4;
     }
 
@@ -122,7 +157,7 @@ async function generateIcons() {
       .png()
       .toFile(join(iconsDir, filename));
 
-    console.log(`   ✓ ${filename} (${size}x${size}, from dark.jpeg center)`);
+    console.log(`   ✓ ${filename} (${size}x${size})`);
   }
 
   // ============================================
