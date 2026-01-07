@@ -2,18 +2,14 @@
 
 A lightweight macOS menu bar app that converts speech to text and translates it to English in real-time.
 
-[![Download for macOS](https://img.shields.io/badge/Download-macOS%20(Apple%20Silicon)-blue?style=for-the-badge&logo=apple)](https://github.com/efeecllk/voice-prompt/releases/latest)
-[![Version](https://img.shields.io/github/v/release/efeecllk/voice-prompt?style=for-the-badge)](https://github.com/efeecllk/voice-prompt/releases/latest)
-
 ![macOS](https://img.shields.io/badge/macOS-10.15+-blue?logo=apple)
+![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-M1%2FM2%2FM3-black?logo=apple)
 ![Tauri](https://img.shields.io/badge/Tauri-2.0-orange?logo=tauri)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
 ## Installation
-
-### Homebrew (Recommended)
 
 ```bash
 brew tap efeecllk/voice-prompt
@@ -22,19 +18,16 @@ brew install --cask voice-prompt
 
 That's it! Open Voice Prompt from Applications.
 
-### Manual Download
-
-[Download Voice Prompt v0.1.0](https://github.com/efeecllk/voice-prompt/releases/latest)
-
-1. Download `Voice Prompt_0.1.0_aarch64.dmg`
-2. Open the DMG file
-3. Drag **Voice Prompt** to **Applications**
-4. Open Voice Prompt
-
 **Requirements:**
 - macOS 10.15+ (Catalina or later)
 - Apple Silicon (M1/M2/M3)
 - OpenAI API key ([Get one here](https://platform.openai.com/api-keys))
+
+### Update
+
+```bash
+brew update && brew upgrade --cask voice-prompt
+```
 
 ---
 
@@ -50,14 +43,13 @@ That's it! Open Voice Prompt from Applications.
 - **History** - Access your last 20 translations
 - **Global Shortcut** - Trigger from anywhere (customizable)
 - **Dark Mode** - Follows system theme automatically
-- **Lightweight** - Only ~7MB download
-- **Secure Storage** - API key stored in macOS Keychain
+- **Lightweight** - Fast and minimal resource usage
 
 ---
 
 ## Quick Start
 
-1. **Download & Install** - Get the app from [Releases](https://github.com/efeecllk/voice-prompt/releases/latest)
+1. **Install** - Run `brew tap efeecllk/voice-prompt && brew install --cask voice-prompt`
 2. **Get API Key** - Sign up at [OpenAI](https://platform.openai.com/api-keys)
 3. **Configure** - Click menu bar icon → Settings → Paste your API key
 4. **Record** - Click microphone or use `Cmd + Shift + Space`
@@ -76,7 +68,7 @@ Auto-detect | Turkish | English | Spanish | French | German | Italian | Portugue
 
 ### API Key
 
-Your API key is stored securely in macOS Keychain and persists across app restarts.
+Your API key is stored locally in the app data directory and persists across app restarts.
 
 1. Get your API key from [platform.openai.com](https://platform.openai.com/api-keys)
 2. Open Voice Prompt settings
@@ -160,4 +152,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
-Made with ❤️ using [Tauri](https://tauri.app)
+Made with [Tauri](https://tauri.app)
