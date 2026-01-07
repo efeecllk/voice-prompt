@@ -13,7 +13,7 @@ function App() {
   // Register global shortcut
   useGlobalShortcut();
 
-  // Load API key from macOS Keychain on app start
+  // Load API key from storage on app start
   useEffect(() => {
     loadApiKey();
   }, [loadApiKey]);

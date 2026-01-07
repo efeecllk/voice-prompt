@@ -139,7 +139,7 @@ export const useAppStore = create<AppState>()(
     {
       name: 'voice-prompt-storage',
       partialize: (state) => ({
-        // Note: apiKey is NOT stored here - it's securely stored in macOS Keychain
+        // Note: apiKey is stored separately via secureStorage (Tauri Store plugin)
         sourceLanguage: state.sourceLanguage,
         outputPrompt: state.outputPrompt,
         shortcut: state.shortcut,

@@ -58,7 +58,7 @@ export default function Settings({ onBack }: SettingsProps) {
             </label>
             <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
               <LockIcon size={12} />
-              Stored in Keychain
+              Stored locally
             </span>
           </div>
           <div className="relative">
