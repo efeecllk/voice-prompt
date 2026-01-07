@@ -4,7 +4,7 @@ A lightweight macOS menu bar app that converts speech to text and translates it 
 
 **Ralph Wiggum Mode**: Turn simple voice requests into detailed, well-structured prompts ready for Claude Code.
 
-<video src="https://github.com/efeecllk/voice-prompt/raw/main/assets/voice-prompt.mp4" width="100%" controls autoplay muted loop></video>
+<!-- Upload video by dragging into GitHub editor to get user-attachments URL -->
 
 ![macOS](https://img.shields.io/badge/macOS-10.15+-blue?logo=apple)
 ![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-M1%2FM2%2FM3-black?logo=apple)
