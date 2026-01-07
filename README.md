@@ -47,6 +47,27 @@ brew update && brew upgrade --cask voice-prompt
 
 ---
 
+## Use Cases
+
+### Prompt Translation
+
+AI tools like Claude and ChatGPT work best with English prompts. Voice Prompt lets you speak in your native language and automatically translates to English - perfect for crafting prompts without typing.
+
+1. Speak your request in any language
+2. Get clean English output
+3. Copy and paste into Claude Code, ChatGPT, or any AI tool
+
+### Ralph Wiggum Mode
+
+Turn simple requests into detailed, well-structured prompts. The Ralph Wiggum template automatically expands your voice input into a comprehensive prompt ready for Claude Code.
+
+1. Select "Ralph Wiggum" in Settings → Output Format
+2. Speak your request naturally
+3. Get a detailed, structured prompt
+4. Copy and paste directly into Claude Code
+
+---
+
 ## Quick Start
 
 1. **Install** - Run `brew tap efeecllk/voice-prompt && brew install --cask voice-prompt`
