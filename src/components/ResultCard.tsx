@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { CopyIcon, CheckIcon } from './icons';
 import { useAppStore, SUPPORTED_LANGUAGES } from '../stores/appStore';
 
@@ -11,6 +11,16 @@ export default function ResultCard({ turkish, english }: ResultCardProps) {
   const [copiedTr, setCopiedTr] = useState(false);
   const [copiedEn, setCopiedEn] = useState(false);
   const sourceLanguage = useAppStore((state) => state.sourceLanguage);
+  const sourceTimeoutRef = useRef<number | null>(null);
+  const englishTimeoutRef = useRef<number | null>(null);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (sourceTimeoutRef.current) clearTimeout(sourceTimeoutRef.current);
+      if (englishTimeoutRef.current) clearTimeout(englishTimeoutRef.current);
+    };
+  }, []);
 
   // Get the display name for the source language
   const sourceLanguageName = SUPPORTED_LANGUAGES.find(
@@ -21,7 +31,12 @@ export default function ResultCard({ turkish, english }: ResultCardProps) {
     try {
       await navigator.clipboard.writeText(turkish);
       setCopiedTr(true);
-      setTimeout(() => setCopiedTr(false), 2000);
+
+      if (sourceTimeoutRef.current) clearTimeout(sourceTimeoutRef.current);
+      sourceTimeoutRef.current = window.setTimeout(() => {
+        setCopiedTr(false);
+        sourceTimeoutRef.current = null;
+      }, 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
     }
@@ -31,7 +46,12 @@ export default function ResultCard({ turkish, english }: ResultCardProps) {
     try {
       await navigator.clipboard.writeText(english);
       setCopiedEn(true);
-      setTimeout(() => setCopiedEn(false), 2000);
+
+      if (englishTimeoutRef.current) clearTimeout(englishTimeoutRef.current);
+      englishTimeoutRef.current = window.setTimeout(() => {
+        setCopiedEn(false);
+        englishTimeoutRef.current = null;
+      }, 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
     }

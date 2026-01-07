@@ -1,25 +1,10 @@
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react';
 import { PROMPT_TEMPLATES } from '../prompts';
+import { ChevronIcon, CheckIcon } from './icons';
 
 interface PromptSelectProps {
   value: string;
   onChange: (value: string) => void;
-}
-
-function ChevronIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
 }
 
 function PromptIcon({ icon, className }: { icon?: string; className?: string }) {
@@ -50,7 +35,7 @@ export default function PromptSelect({ value, onChange }: PromptSelectProps) {
               </span>
             </span>
           </span>
-          <ChevronIcon className="text-surface-400 flex-shrink-0 ml-2" />
+          <ChevronIcon size={12} className="text-surface-400 flex-shrink-0 ml-2" />
         </ListboxButton>
 
         <ListboxOptions
@@ -63,7 +48,7 @@ export default function PromptSelect({ value, onChange }: PromptSelectProps) {
               value={prompt.id}
               className="group flex items-start gap-2 px-3 py-2.5 cursor-pointer select-none data-[focus]:bg-surface-100 dark:data-[focus]:bg-surface-700 data-[selected]:text-accent-600 dark:data-[selected]:text-accent-400"
             >
-              <CheckIcon className="invisible group-data-[selected]:visible text-accent-500 mt-0.5 flex-shrink-0" />
+              <CheckIcon size={14} className="invisible group-data-[selected]:visible text-accent-500 mt-0.5 flex-shrink-0" />
               <PromptIcon icon={prompt.icon} className="w-5 h-5 flex-shrink-0 text-lg mt-0.5" />
               <div className="flex flex-col gap-0.5 min-w-0">
                 <span className="text-sm font-medium text-surface-800 dark:text-surface-200 group-data-[selected]:text-accent-600 dark:group-data-[selected]:text-accent-400">

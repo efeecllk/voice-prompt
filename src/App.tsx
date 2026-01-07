@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import MainView from './components/MainView';
-import Settings from './components/Settings';
 import { useAppStore } from './stores/appStore';
 import { useGlobalShortcut } from './hooks/useGlobalShortcut';
+
+// Lazy load Settings - not needed at startup
+const Settings = lazy(() => import('./components/Settings'));
 
 function App() {
   const [view, setView] = useState<'main' | 'settings'>('main');
@@ -45,7 +47,13 @@ function App() {
       {view === 'main' ? (
         <MainView onSettingsClick={() => setView('settings')} />
       ) : (
-        <Settings onBack={() => setView('main')} />
+        <Suspense fallback={
+          <div className="flex items-center justify-center h-full">
+            <div className="animate-spin rounded-full h-6 w-6 border-2 border-surface-300 border-t-surface-600" />
+          </div>
+        }>
+          <Settings onBack={() => setView('main')} />
+        </Suspense>
       )}
     </div>
   );

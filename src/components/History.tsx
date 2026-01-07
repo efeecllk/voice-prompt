@@ -1,10 +1,20 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { HistoryIcon, CopyIcon, CheckIcon, TrashIcon } from './icons';
 
 export default function History() {
   const { history, clearHistory } = useAppStore();
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const timeoutRef = useRef<number | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   if (history.length === 0) {
     return null;
@@ -14,7 +24,16 @@ export default function History() {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 2000);
+
+      // Clear previous timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
+      timeoutRef.current = window.setTimeout(() => {
+        setCopiedId(null);
+        timeoutRef.current = null;
+      }, 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
     }

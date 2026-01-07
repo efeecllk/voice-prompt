@@ -39,9 +39,6 @@ importers:
       '@types/react-dom':
         specifier: ^18.3.0
         version: 18.3.7(@types/react@18.3.27)
-      '@vitejs/plugin-basic-ssl':
-        specifier: ^2.1.0
-        version: 2.1.0(vite@5.4.21)
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@5.4.21)
@@ -769,12 +766,6 @@ packages:
 
   '@types/react@18.3.27':
     resolution: {integrity: sha512-cisd7gxkzjBKU2GgdYrTdtQx1SORymWyaAFhaxQPK9bYO9ot3Y5OikQRvY0VYQtvwjeQnizCINJAenh/V7MK2w==}
-
-  '@vitejs/plugin-basic-ssl@2.1.0':
-    resolution: {integrity: sha512-dOxxrhgyDIEUADhb/8OlV9JIqYLgos03YorAueTIeOUskLJSEsfwCByjbu98ctXitUN3znXKp0bYD/WHSudCeA==}
-    engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
-    peerDependencies:
-      vite: ^6.0.0 || ^7.0.0
 
   '@vitejs/plugin-react@4.7.0':
     resolution: {integrity: sha512-gUu9hwfWvvEDBBmgtAowQCojwZmJ5mcLn3aufeCsitijs3+f2NsrPtlAWIR6OPiqljl96GVCUbLe0HyqIpVaoA==}
@@ -1827,10 +1818,6 @@ snapshots:
     dependencies:
       '@types/prop-types': 15.7.15
       csstype: 3.2.3
-
-  '@vitejs/plugin-basic-ssl@2.1.0(vite@5.4.21)':
-    dependencies:
-      vite: 5.4.21
 
   '@vitejs/plugin-react@4.7.0(vite@5.4.21)':
     dependencies:

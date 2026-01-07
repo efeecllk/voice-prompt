@@ -1,8 +1,29 @@
-import { SVGProps } from 'react';
+import { SVGProps, memo } from 'react';
 
 interface IconProps extends SVGProps<SVGSVGElement> {
   size?: number;
 }
+
+/**
+ * Chevron Icon - For dropdowns
+ */
+export const ChevronIcon = memo(function ChevronIcon({ size = 12, ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M3 4.5L6 7.5L9 4.5" />
+    </svg>
+  );
+});
 
 
 /**
@@ -339,6 +360,7 @@ export function AppLogoIcon({ size = 24, ...props }: IconProps) {
 
 // Export all icons
 export const Icons = {
+  Chevron: ChevronIcon,
   Microphone: MicrophoneIcon,
   Stop: StopIcon,
   Settings: SettingsIcon,
