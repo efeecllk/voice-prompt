@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CopyIcon, CheckIcon } from './icons';
+import { useAppStore, SUPPORTED_LANGUAGES } from '../stores/appStore';
 
 interface ResultCardProps {
   turkish: string;
@@ -9,8 +10,14 @@ interface ResultCardProps {
 export default function ResultCard({ turkish, english }: ResultCardProps) {
   const [copiedTr, setCopiedTr] = useState(false);
   const [copiedEn, setCopiedEn] = useState(false);
+  const sourceLanguage = useAppStore((state) => state.sourceLanguage);
 
-  const handleCopyTurkish = async () => {
+  // Get the display name for the source language
+  const sourceLanguageName = SUPPORTED_LANGUAGES.find(
+    (lang) => lang.code === sourceLanguage
+  )?.name || 'Source';
+
+  const handleCopySource = async () => {
     try {
       await navigator.clipboard.writeText(turkish);
       setCopiedTr(true);
@@ -32,15 +39,15 @@ export default function ResultCard({ turkish, english }: ResultCardProps) {
 
   return (
     <div className="space-y-3">
-      {/* Turkish */}
+      {/* Source Language */}
       {turkish && (
         <div className="bg-surface-100/50 dark:bg-surface-800 rounded-lg p-3 group">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] tracking-wider text-surface-400 dark:text-surface-500 uppercase font-semibold">
-              Turkish
+              {sourceLanguageName}
             </span>
             <button
-              onClick={handleCopyTurkish}
+              onClick={handleCopySource}
               className={`
                 p-1 rounded transition-all duration-200
                 ${copiedTr
@@ -48,7 +55,7 @@ export default function ResultCard({ turkish, english }: ResultCardProps) {
                   : 'text-surface-300 dark:text-surface-600 hover:text-surface-400 dark:hover:text-surface-500 opacity-0 group-hover:opacity-100'
                 }
               `}
-              title={copiedTr ? 'Copied!' : 'Copy Turkish'}
+              title={copiedTr ? 'Copied!' : `Copy ${sourceLanguageName}`}
             >
               {copiedTr ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
             </button>
