@@ -1,6 +1,6 @@
 # Voice Prompt
 
-A lightweight macOS menu bar app that converts speech to text and translates it to English in real-time. Perfect for crafting prompts for AI tools like Claude and ChatGPT - speak in your native language, get clean English output.
+A lightweight macOS menu bar app that converts speech to text and translates it to English. Perfect for crafting prompts for AI tools like Claude and ChatGPT - speak in your native language, get clean English output.
 
 **Ralph Wiggum Mode**: Turn simple voice requests into detailed, well-structured prompts ready for Claude Code.
 
