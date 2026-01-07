@@ -23,9 +23,10 @@ A lightweight macOS menu bar app that converts speech to text and translates it 
 **Installation:**
 1. Download `Voice Prompt_0.1.0_aarch64.dmg`
 2. Open the DMG file
-3. Double-click **"Install Voice Prompt"**
-4. Press `y` when asked to open the app
-5. Done!
+3. Drag **Voice Prompt** to **Applications**
+4. Open Voice Prompt - macOS will show a warning
+5. Go to **System Settings → Privacy & Security** → Click **"Open Anyway"**
+6. Done! (You only need to do this once)
 
 ---
 
