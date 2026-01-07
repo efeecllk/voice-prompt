@@ -99,9 +99,11 @@ pub fn run() {
             let quit_item = MenuItem::with_id(app, "quit", "Quit Voice Prompt", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&quit_item])?;
 
-            // Create tray icon using template icon for macOS
+            // Create tray icon using the dedicated template icon for macOS menu bar
+            let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray-icon@2x.png"))
+                .expect("Failed to load tray icon");
             let _tray = TrayIconBuilder::new()
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon(tray_icon)
                 .icon_as_template(true)
                 .menu(&menu)
                 .show_menu_on_left_click(false)
