@@ -8,6 +8,7 @@ export function useAudioRecorder() {
 
   const {
     apiKey,
+    sourceLanguage,
     setRecording,
     setProcessing,
     setResult,
@@ -47,20 +48,28 @@ export function useAudioRecorder() {
         try {
           const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
 
-          // Step 1: Transcribe Turkish audio
-          const turkishText = await transcribeAudio(audioBlob, apiKey);
+          // Step 1: Transcribe audio in selected language
+          const { text: sourceText, detectedLanguage } = await transcribeAudio(
+            audioBlob,
+            apiKey,
+            sourceLanguage
+          );
 
-          if (!turkishText.trim()) {
+          if (!sourceText.trim()) {
             setError('Could not transcribe audio. Please try again.');
             return;
           }
 
           // Step 2: Translate to English
-          const englishText = await translateToEnglish(turkishText, apiKey);
+          const englishText = await translateToEnglish(
+            sourceText,
+            apiKey,
+            detectedLanguage
+          );
 
           // Set results and add to history
-          setResult(turkishText, englishText);
-          addToHistory(turkishText, englishText);
+          setResult(sourceText, englishText);
+          addToHistory(sourceText, englishText);
         } catch (err) {
           const message = err instanceof Error ? err.message : 'An error occurred';
           setError(message);
@@ -77,7 +86,7 @@ export function useAudioRecorder() {
       const message = err instanceof Error ? err.message : 'Failed to access microphone';
       setError(message);
     }
-  }, [apiKey, clearCurrent, setRecording, setProcessing, setResult, setError, addToHistory]);
+  }, [apiKey, sourceLanguage, clearCurrent, setRecording, setProcessing, setResult, setError, addToHistory]);
 
   const stopRecording = useCallback(() => {
     // Always set recording to false first

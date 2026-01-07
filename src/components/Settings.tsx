@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { open } from '@tauri-apps/plugin-shell';
-import { useAppStore } from '../stores/appStore';
+import { useAppStore, SUPPORTED_LANGUAGES } from '../stores/appStore';
 import { BackIcon, EyeIcon, EyeOffIcon, LockIcon } from './icons';
 
 interface SettingsProps {
@@ -8,8 +8,9 @@ interface SettingsProps {
 }
 
 export default function Settings({ onBack }: SettingsProps) {
-  const { apiKey, shortcut, theme, setApiKey, setShortcut, setTheme } = useAppStore();
+  const { apiKey, sourceLanguage, shortcut, theme, setApiKey, setSourceLanguage, setShortcut, setTheme } = useAppStore();
   const [localApiKey, setLocalApiKey] = useState(apiKey);
+  const [localLanguage, setLocalLanguage] = useState(sourceLanguage);
   const [localShortcut, setLocalShortcut] = useState(shortcut);
   const [showKey, setShowKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -17,6 +18,7 @@ export default function Settings({ onBack }: SettingsProps) {
   const handleSave = async () => {
     setIsSaving(true);
     await setApiKey(localApiKey);
+    setSourceLanguage(localLanguage);
     setShortcut(localShortcut);
     setIsSaving(false);
     onBack();
@@ -80,6 +82,29 @@ export default function Settings({ onBack }: SettingsProps) {
             >
               platform.openai.com
             </button>
+          </p>
+        </div>
+
+        {/* Source Language */}
+        <div>
+          <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-2">
+            Source Language
+          </label>
+          <select
+            value={localLanguage}
+            onChange={(e) => setLocalLanguage(e.target.value)}
+            className="w-full px-3 py-2.5 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg text-sm text-surface-800 dark:text-surface-200 focus:outline-none focus:ring-2 focus:ring-accent-400/50 focus:border-accent-400 cursor-pointer"
+          >
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.code === 'auto' ? '🔮 Auto-detect' : `${lang.nativeName} (${lang.name})`}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-xs text-surface-400 dark:text-surface-500">
+            {localLanguage === 'auto'
+              ? 'Whisper will automatically detect the language'
+              : 'The language you will speak in'}
           </p>
         </div>
 

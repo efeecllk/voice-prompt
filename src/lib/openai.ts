@@ -1,11 +1,21 @@
+import { SUPPORTED_LANGUAGES } from '../stores/appStore';
+
 const WHISPER_API_URL = 'https://api.openai.com/v1/audio/transcriptions';
 const CHAT_API_URL = 'https://api.openai.com/v1/chat/completions';
 
-export async function transcribeAudio(audioBlob: Blob, apiKey: string): Promise<string> {
+export async function transcribeAudio(
+  audioBlob: Blob,
+  apiKey: string,
+  language: string = 'tr'
+): Promise<{ text: string; detectedLanguage: string }> {
   const formData = new FormData();
   formData.append('file', audioBlob, 'audio.webm');
   formData.append('model', 'whisper-1');
-  formData.append('language', 'tr'); // Turkish
+
+  // Only set language if not auto-detect
+  if (language !== 'auto') {
+    formData.append('language', language);
+  }
 
   const response = await fetch(WHISPER_API_URL, {
     method: 'POST',
@@ -21,10 +31,28 @@ export async function transcribeAudio(audioBlob: Blob, apiKey: string): Promise<
   }
 
   const data = await response.json();
-  return data.text || '';
+  return {
+    text: data.text || '',
+    detectedLanguage: language === 'auto' ? (data.language || 'unknown') : language,
+  };
 }
 
-export async function translateToEnglish(turkishText: string, apiKey: string): Promise<string> {
+export function getLanguageName(code: string): string {
+  const lang = SUPPORTED_LANGUAGES.find((l) => l.code === code);
+  return lang?.name || code;
+}
+
+export async function translateToEnglish(
+  sourceText: string,
+  apiKey: string,
+  sourceLanguage: string = 'tr'
+): Promise<string> {
+  // If source is already English, return as-is
+  if (sourceLanguage === 'en') {
+    return sourceText;
+  }
+
+  const languageName = getLanguageName(sourceLanguage);
   const response = await fetch(CHAT_API_URL, {
     method: 'POST',
     headers: {
@@ -36,12 +64,11 @@ export async function translateToEnglish(turkishText: string, apiKey: string): P
       messages: [
         {
           role: 'system',
-          content:
-            'You are a translator. Translate the following Turkish text to English. Only output the translation, nothing else. Keep the same tone and style.',
+          content: `You are a translator. Translate the following ${languageName} text to English. Only output the translation, nothing else. Keep the same tone and style.`,
         },
         {
           role: 'user',
-          content: turkishText,
+          content: sourceText,
         },
       ],
       temperature: 0.3,
