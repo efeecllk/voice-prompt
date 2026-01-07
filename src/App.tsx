@@ -6,10 +6,15 @@ import { useGlobalShortcut } from './hooks/useGlobalShortcut';
 
 function App() {
   const [view, setView] = useState<'main' | 'settings'>('main');
-  const { theme } = useAppStore();
+  const { theme, loadApiKey } = useAppStore();
 
   // Register global shortcut
   useGlobalShortcut();
+
+  // Load API key from macOS Keychain on app start
+  useEffect(() => {
+    loadApiKey();
+  }, [loadApiKey]);
 
   useEffect(() => {
     if (theme === 'dark') {

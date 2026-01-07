@@ -17,6 +17,7 @@ A lightweight macOS menu bar app that converts Turkish speech to text and transl
 - **Global Shortcut** - Trigger from anywhere (customizable)
 - **Dark Mode** - Automatic theme support
 - **Lightweight** - ~15MB app size
+- **Secure Storage** - API key stored in macOS Keychain
 
 ## Installation
 
@@ -117,7 +118,7 @@ Available options:
 
 ### Future Considerations
 
-- [ ] Secure API storage (macOS Keychain)
+- [x] ~~Secure API storage (macOS Keychain)~~ - Implemented!
 - [ ] Auto-update mechanism
 - [ ] Keyboard shortcuts within app
 - [ ] Sound effects for recording

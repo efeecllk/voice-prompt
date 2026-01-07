@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { secureStorage } from '../lib/secureStorage';
 
 export interface HistoryItem {
   id: string;
@@ -11,6 +12,7 @@ export interface HistoryItem {
 interface AppState {
   // Settings
   apiKey: string;
+  apiKeyLoaded: boolean;
   shortcut: string;
   theme: 'light' | 'dark';
 
@@ -25,7 +27,8 @@ interface AppState {
   error: string | null;
 
   // Actions
-  setApiKey: (key: string) => void;
+  loadApiKey: () => Promise<void>;
+  setApiKey: (key: string) => Promise<void>;
   setShortcut: (shortcut: string) => void;
   setTheme: (theme: 'light' | 'dark') => void;
   setRecording: (isRecording: boolean) => void;
@@ -44,6 +47,7 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       // Settings
       apiKey: '',
+      apiKeyLoaded: false,
       shortcut: 'CommandOrControl+Shift+Space',
       theme: 'light',
 
@@ -58,7 +62,16 @@ export const useAppStore = create<AppState>()(
       error: null,
 
       // Actions
-      setApiKey: (apiKey) => set({ apiKey }),
+      loadApiKey: async () => {
+        const apiKey = await secureStorage.getApiKey();
+        set({ apiKey, apiKeyLoaded: true });
+      },
+      setApiKey: async (apiKey) => {
+        const success = await secureStorage.setApiKey(apiKey);
+        if (success) {
+          set({ apiKey });
+        }
+      },
       setShortcut: (shortcut) => set({ shortcut }),
       setTheme: (theme) => set({ theme }),
       setRecording: (isRecording) => set({ isRecording }),
@@ -88,7 +101,7 @@ export const useAppStore = create<AppState>()(
     {
       name: 'voice-prompt-storage',
       partialize: (state) => ({
-        apiKey: state.apiKey,
+        // Note: apiKey is NOT stored here - it's securely stored in macOS Keychain
         shortcut: state.shortcut,
         theme: state.theme,
         history: state.history,

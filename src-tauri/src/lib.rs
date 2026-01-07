@@ -1,8 +1,13 @@
+use keyring::Entry;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, PhysicalPosition,
 };
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+
+const KEYCHAIN_SERVICE: &str = "com.voiceprompt.app";
+const KEYCHAIN_API_KEY: &str = "openai-api-key";
 
 #[cfg(target_os = "macos")]
 use cocoa::appkit::{NSApp, NSApplication};
@@ -88,6 +93,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // Create tray menu
             let quit_item = MenuItem::with_id(app, "quit", "Quit Voice Prompt", true, None::<&str>)?;
@@ -100,7 +106,17 @@ pub fn run() {
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| {
                     if event.id == "quit" {
-                        app.exit(0);
+                        let confirmed = app
+                            .dialog()
+                            .message("Are you sure you want to quit?")
+                            .title("Quit Voice Prompt")
+                            .kind(MessageDialogKind::Warning)
+                            .buttons(MessageDialogButtons::OkCancel)
+                            .blocking_show();
+
+                        if confirmed {
+                            app.exit(0);
+                        }
                     }
                 })
                 .on_tray_icon_event(|tray, event| {
@@ -133,7 +149,29 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![show_and_focus_window])
+        .invoke_handler(tauri::generate_handler![show_and_focus_window, get_api_key, set_api_key, delete_api_key])
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // Prevent default close behavior
+                api.prevent_close();
+
+                // Show confirmation dialog
+                let window_clone = window.clone();
+                let confirmed = window
+                    .app_handle()
+                    .dialog()
+                    .message("Are you sure you want to close?")
+                    .title("Close Voice Prompt")
+                    .kind(MessageDialogKind::Warning)
+                    .buttons(MessageDialogButtons::OkCancel)
+                    .blocking_show();
+
+                if confirmed {
+                    // Hide window instead of closing (keep app running in tray)
+                    let _ = window_clone.hide();
+                }
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -142,4 +180,47 @@ pub fn run() {
 #[tauri::command]
 fn show_and_focus_window(app: AppHandle, window: tauri::WebviewWindow) {
     show_window_at_cursor(&app, &window);
+}
+
+// Secure API key storage using macOS Keychain
+#[tauri::command]
+fn get_api_key() -> Result<String, String> {
+    let entry = Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_API_KEY)
+        .map_err(|e| format!("Failed to create keychain entry: {}", e))?;
+
+    match entry.get_password() {
+        Ok(password) => Ok(password),
+        Err(keyring::Error::NoEntry) => Ok(String::new()),
+        Err(e) => Err(format!("Failed to get API key: {}", e)),
+    }
+}
+
+#[tauri::command]
+fn set_api_key(api_key: String) -> Result<(), String> {
+    let entry = Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_API_KEY)
+        .map_err(|e| format!("Failed to create keychain entry: {}", e))?;
+
+    if api_key.is_empty() {
+        // Delete the key if empty
+        match entry.delete_credential() {
+            Ok(()) => Ok(()),
+            Err(keyring::Error::NoEntry) => Ok(()), // Already deleted
+            Err(e) => Err(format!("Failed to delete API key: {}", e)),
+        }
+    } else {
+        entry.set_password(&api_key)
+            .map_err(|e| format!("Failed to save API key: {}", e))
+    }
+}
+
+#[tauri::command]
+fn delete_api_key() -> Result<(), String> {
+    let entry = Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_API_KEY)
+        .map_err(|e| format!("Failed to create keychain entry: {}", e))?;
+
+    match entry.delete_credential() {
+        Ok(()) => Ok(()),
+        Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e) => Err(format!("Failed to delete API key: {}", e)),
+    }
 }
