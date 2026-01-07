@@ -300,8 +300,8 @@ export function LockIcon({ size = 24, ...props }: IconProps) {
 }
 
 /**
- * App Logo - Voice translation symbol
- * Simple abstract mark: sound waves flowing into translation
+ * App Logo - Hand waving with speech bubble and signal waves
+ * Matches the app icon design
  */
 export function AppLogoIcon({ size = 24, ...props }: IconProps) {
   return (
@@ -310,52 +310,29 @@ export function AppLogoIcon({ size = 24, ...props }: IconProps) {
       height={size}
       viewBox="0 0 24 24"
       fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       {...props}
     >
-      {/* Rounded square background */}
-      <rect
-        x="2"
-        y="2"
-        width="20"
-        height="20"
-        rx="6"
-        fill="currentColor"
-        opacity="0.1"
-      />
-      {/* Sound waves */}
-      <path
-        d="M7 9.5C7 9.5 8.5 8 10 8s3 1.5 3 1.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <path
-        d="M5.5 7C5.5 7 8 5 10 5s4.5 2 4.5 2"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        opacity="0.5"
-      />
-      {/* Arrow / flow */}
-      <path
-        d="M10 12v5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <path
-        d="M10 17l4-2"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      {/* Output dot */}
-      <circle
-        cx="16"
-        cy="15"
-        r="2"
-        fill="currentColor"
-      />
+      {/* Signal waves at top */}
+      <path d="M8 5c0 0 2-1.5 4.5-1.5S17 5 17 5" />
+      <path d="M9.5 7.5c0 0 1.2-1 3-1s3 1 3 1" />
+
+      {/* Waving hand */}
+      <path d="M6 14c0-1 0.5-2 1.5-2.5" />
+      <path d="M7.5 11.5c0.3-0.8 0.8-1.5 1.5-1.5c0.5 0 0.8 0.3 1 0.8" />
+      <path d="M10 10.8c0.2-0.5 0.5-1 1-1c0.4 0 0.7 0.3 0.8 0.7" />
+      <path d="M11.8 10.5c0.2-0.4 0.5-0.7 0.9-0.7c0.5 0 0.8 0.5 0.8 1v2" />
+      <path d="M7.5 11.5v4c0 1.5 1 3 3 3h1" />
+
+      {/* Speech bubble with waveform */}
+      <path d="M14 13c0-1.1 0.9-2 2-2h3c1.1 0 2 0.9 2 2v3c0 1.1-0.9 2-2 2h-1l-1.5 2-0.5-2h-2c-1.1 0-2-0.9-2-2v-1" />
+      {/* Waveform inside bubble */}
+      <path d="M16 14v2" />
+      <path d="M17.5 13.5v3" />
+      <path d="M19 14v2" />
     </svg>
   );
 }

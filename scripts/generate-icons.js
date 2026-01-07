@@ -1,88 +1,182 @@
 import sharp from 'sharp';
-import { writeFileSync, mkdirSync } from 'fs';
-import { dirname, join } from 'path';
+import { join } from 'path';
+import { dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
+import { existsSync, mkdirSync, rmSync } from 'fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const iconsDir = join(__dirname, '../src-tauri/icons');
 
-// Simple tray icon SVG - voice waves with translation dot
-// Template icon for macOS (black on transparent)
-const trayIconSvg = `
-<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Sound waves -->
-  <path d="M6 9C6 9 7.5 7.5 9.5 7.5S13 9 13 9" stroke="black" stroke-width="2" stroke-linecap="round"/>
-  <path d="M4 6.5C4 6.5 6.5 4 9.5 4S15 6.5 15 6.5" stroke="black" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
-  <!-- Flow line -->
-  <path d="M9.5 11V16" stroke="black" stroke-width="2" stroke-linecap="round"/>
-  <path d="M9.5 16L14 14" stroke="black" stroke-width="2" stroke-linecap="round"/>
-  <!-- Output dot -->
-  <circle cx="15.5" cy="14" r="2.5" fill="black"/>
-</svg>
-`;
-
-// App icon SVG - more detailed for dock/app icon
-const appIconSvg = (size) => `
-<svg width="${size}" height="${size}" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background -->
-  <rect width="512" height="512" rx="115" fill="#292524"/>
-  <!-- Sound waves -->
-  <path d="M140 210C140 210 175 170 230 170S320 210 320 210" stroke="#F5F5F4" stroke-width="24" stroke-linecap="round"/>
-  <path d="M100 160C100 160 160 100 230 100S360 160 360 160" stroke="#F5F5F4" stroke-width="24" stroke-linecap="round" opacity="0.5"/>
-  <!-- Flow line -->
-  <path d="M230 260V370" stroke="#F5F5F4" stroke-width="24" stroke-linecap="round"/>
-  <path d="M230 370L340 320" stroke="#F5F5F4" stroke-width="24" stroke-linecap="round"/>
-  <!-- Output dot -->
-  <circle cx="370" cy="320" r="40" fill="#A78BFA"/>
-</svg>
-`;
-
 async function generateIcons() {
-  console.log('Generating icons...');
+  console.log('🎨 Generating icons from custom logos...\n');
 
-  // Generate tray icon (22x22 for macOS menu bar)
-  const trayBuffer = Buffer.from(trayIconSvg);
-  await sharp(trayBuffer)
-    .resize(22, 22)
-    .png()
-    .toFile(join(iconsDir, 'tray-icon.png'));
-  console.log('✓ tray-icon.png (22x22)');
+  const darkJpeg = join(iconsDir, 'dark.jpeg');
+  const lightJpeg = join(iconsDir, 'light.jpeg');
 
-  // Generate tray icon @2x (44x44)
-  await sharp(trayBuffer)
-    .resize(44, 44)
-    .png()
-    .toFile(join(iconsDir, 'tray-icon@2x.png'));
-  console.log('✓ tray-icon@2x.png (44x44)');
+  // ============================================
+  // APP ICONS (from dark.jpeg)
+  // ============================================
+  console.log('📱 Generating app icons from dark.jpeg:');
 
-  // Generate app icons
-  const sizes = [32, 128, 256, 512];
-  for (const size of sizes) {
-    const appBuffer = Buffer.from(appIconSvg(size));
-    await sharp(appBuffer)
-      .resize(size, size)
+  const appSizes = [16, 32, 64, 128, 256, 512, 1024];
+
+  for (const size of appSizes) {
+    await sharp(darkJpeg)
+      .resize(size, size, { fit: 'cover' })
+      .ensureAlpha()  // RGBA required by Tauri
       .png()
       .toFile(join(iconsDir, `${size}x${size}.png`));
-    console.log(`✓ ${size}x${size}.png`);
+    console.log(`   ✓ ${size}x${size}.png`);
   }
 
   // Generate 128x128@2x (256px)
-  const app256Buffer = Buffer.from(appIconSvg(256));
-  await sharp(app256Buffer)
-    .resize(256, 256)
+  await sharp(darkJpeg)
+    .resize(256, 256, { fit: 'cover' })
+    .ensureAlpha()
     .png()
     .toFile(join(iconsDir, '128x128@2x.png'));
-  console.log('✓ 128x128@2x.png (256x256)');
+  console.log('   ✓ 128x128@2x.png (256x256)');
 
-  // Generate icon.png (512px main icon)
-  const app512Buffer = Buffer.from(appIconSvg(512));
-  await sharp(app512Buffer)
-    .resize(512, 512)
+  // Generate main icon.png (512px)
+  await sharp(darkJpeg)
+    .resize(512, 512, { fit: 'cover' })
+    .ensureAlpha()
     .png()
     .toFile(join(iconsDir, 'icon.png'));
-  console.log('✓ icon.png (512x512)');
+  console.log('   ✓ icon.png (512x512)');
 
-  console.log('\nDone! Icons generated in src-tauri/icons/');
+  // ============================================
+  // TRAY ICONS (from dark.jpeg - extract white icon)
+  // For macOS template icons: black on transparent
+  // IMPORTANT: Crop center to avoid white corners of the rounded rect
+  // ============================================
+  console.log('\n🔲 Generating tray icons from dark.jpeg:');
+
+  // Get the dimensions of dark.jpeg
+  const darkMeta = await sharp(darkJpeg).metadata();
+  const srcSize = Math.min(darkMeta.width, darkMeta.height);
+
+  // Crop 15% from each edge to remove the white corners and rounded rect edges
+  const cropMargin = Math.floor(srcSize * 0.15);
+  const cropSize = srcSize - (cropMargin * 2);
+
+  for (const size of [22, 44]) {
+    const suffix = size === 44 ? '@2x' : '';
+    const filename = `tray-icon${suffix}.png`;
+
+    // Extract center region, avoiding white corners
+    const { data } = await sharp(darkJpeg)
+      .extract({
+        left: cropMargin,
+        top: cropMargin,
+        width: cropSize,
+        height: cropSize
+      })
+      .resize(size, size, { fit: 'cover', kernel: 'lanczos3' })
+      .removeAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    // Create new RGBA buffer
+    const pixelCount = size * size;
+    const newData = Buffer.alloc(pixelCount * 4);
+
+    // For dark.jpeg: white icon on dark background
+    // We want: white pixels -> black (opaque), dark pixels -> transparent
+    // Threshold: high luminance = icon, low luminance = background
+    const threshold = 180; // Pixels brighter than this are the white icon
+
+    let srcIdx = 0;
+    let dstIdx = 0;
+    for (let p = 0; p < pixelCount; p++) {
+      const r = data[srcIdx];
+      const g = data[srcIdx + 1];
+      const b = data[srcIdx + 2];
+      const luminance = (r + g + b) / 3;
+      srcIdx += 3;
+
+      if (luminance > threshold) {
+        // White/light pixel (the icon) -> opaque black
+        newData[dstIdx] = 0;       // R
+        newData[dstIdx + 1] = 0;   // G
+        newData[dstIdx + 2] = 0;   // B
+        newData[dstIdx + 3] = 255; // A - fully opaque
+      } else {
+        // Dark pixel (background) -> fully transparent
+        newData[dstIdx] = 0;
+        newData[dstIdx + 1] = 0;
+        newData[dstIdx + 2] = 0;
+        newData[dstIdx + 3] = 0;   // A - fully transparent
+      }
+      dstIdx += 4;
+    }
+
+    await sharp(newData, {
+      raw: {
+        width: size,
+        height: size,
+        channels: 4
+      }
+    })
+      .png()
+      .toFile(join(iconsDir, filename));
+
+    console.log(`   ✓ ${filename} (${size}x${size}, from dark.jpeg center)`);
+  }
+
+  // ============================================
+  // macOS .icns FILE
+  // ============================================
+  console.log('\n🍎 Generating macOS .icns file:');
+
+  const iconsetDir = join(iconsDir, 'icon.iconset');
+
+  // Clean and create iconset directory
+  if (existsSync(iconsetDir)) {
+    rmSync(iconsetDir, { recursive: true });
+  }
+  mkdirSync(iconsetDir);
+
+  // Generate all required sizes for .icns
+  const icnsMapping = [
+    { size: 16, scale: 1, name: 'icon_16x16.png' },
+    { size: 16, scale: 2, name: 'icon_16x16@2x.png' },
+    { size: 32, scale: 1, name: 'icon_32x32.png' },
+    { size: 32, scale: 2, name: 'icon_32x32@2x.png' },
+    { size: 128, scale: 1, name: 'icon_128x128.png' },
+    { size: 128, scale: 2, name: 'icon_128x128@2x.png' },
+    { size: 256, scale: 1, name: 'icon_256x256.png' },
+    { size: 256, scale: 2, name: 'icon_256x256@2x.png' },
+    { size: 512, scale: 1, name: 'icon_512x512.png' },
+    { size: 512, scale: 2, name: 'icon_512x512@2x.png' },
+  ];
+
+  for (const { size, scale, name } of icnsMapping) {
+    const actualSize = size * scale;
+    await sharp(darkJpeg)
+      .resize(actualSize, actualSize, { fit: 'cover' })
+      .ensureAlpha()
+      .png()
+      .toFile(join(iconsetDir, name));
+  }
+  console.log('   ✓ Created iconset with all sizes');
+
+  // Use iconutil to create .icns
+  try {
+    execSync(`iconutil -c icns "${iconsetDir}" -o "${join(iconsDir, 'icon.icns')}"`, {
+      stdio: 'pipe'
+    });
+    console.log('   ✓ icon.icns created');
+
+    // Clean up iconset directory
+    rmSync(iconsetDir, { recursive: true });
+    console.log('   ✓ Cleaned up iconset directory');
+  } catch (err) {
+    console.log('   ⚠ Failed to create .icns (iconutil not available)');
+  }
+
+  console.log('\n✅ Done! All icons generated in src-tauri/icons/');
 }
 
 generateIcons().catch(console.error);
