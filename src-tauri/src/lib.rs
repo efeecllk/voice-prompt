@@ -204,7 +204,7 @@ fn set_api_key(api_key: String) -> Result<(), String> {
         // Delete the key if empty
         match entry.delete_credential() {
             Ok(()) => Ok(()),
-            Err(keyring::Error::NoEntry) => Ok(()), // Already deleted
+            Err(keyring::Error::NoEntry) => Ok(()),
             Err(e) => Err(format!("Failed to delete API key: {}", e)),
         }
     } else {

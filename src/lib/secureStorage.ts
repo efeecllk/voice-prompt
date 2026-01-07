@@ -21,7 +21,8 @@ export const secureStorage = {
    */
   async setApiKey(apiKey: string): Promise<boolean> {
     try {
-      await invoke('set_api_key', { apiKey });
+      // Tauri expects snake_case parameter names matching Rust function signature
+      await invoke('set_api_key', { api_key: apiKey });
       return true;
     } catch (error) {
       console.error('Failed to save API key to keychain:', error);
