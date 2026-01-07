@@ -141,17 +141,6 @@ pnpm tauri build
 
 ---
 
-## Roadmap
-
-- [ ] Intel Mac support
-- [ ] Windows/Linux support
-- [ ] Auto-update mechanism
-- [ ] More output languages
-- [ ] Streaming transcription
-- [ ] Offline mode (local Whisper)
-
----
-
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
