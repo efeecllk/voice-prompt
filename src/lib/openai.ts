@@ -134,6 +134,14 @@ export interface GeneratedPrompt {
   systemPrompt: string;
 }
 
+export interface GeneratedOutputFormat {
+  name: string;
+  description: string;
+  systemPrompt: string;
+  outputFormat: 'text' | 'code-block';
+  codeBlockLang?: string;
+}
+
 export async function generatePromptFromVoice(
   voiceDescription: string,
   apiKey: string
@@ -198,5 +206,109 @@ Example response:
   } catch {
     // If parsing fails, try to extract from the content
     throw new Error('Failed to parse generated prompt. Please try again.');
+  }
+}
+
+export async function generateOutputFormatFromVoice(
+  voiceDescription: string,
+  apiKey: string
+): Promise<GeneratedOutputFormat> {
+  const systemPrompt = `You are an expert prompt engineer specializing in voice-to-text processing systems. Your task is to generate high-quality system prompts based on voice descriptions from users (potentially in any language).
+
+## YOUR OUTPUT
+
+Generate a JSON object with exactly these fields:
+- name: Short, clear name (2-5 words, title case)
+- description: One-sentence description of what the prompt does
+- systemPrompt: The complete system prompt following the structure below
+- outputFormat: Either "text" for plain text output or "code-block" for formatted code/command output
+- codeBlockLang: If outputFormat is "code-block", specify the language (e.g., "bash", "javascript", "python"). Omit if outputFormat is "text".
+
+Respond ONLY with valid JSON, no markdown code blocks or extra text.
+
+## SYSTEM PROMPT STRUCTURE
+
+### For Simple Tasks (translation, summarization, formatting):
+You are a [ROLE]. [TASK DESCRIPTION using {sourceLang} placeholder]. Only output [EXPECTED OUTPUT], nothing else. [STYLE/TONE GUIDANCE if relevant].
+
+### For Complex Tasks (code generation, multi-step processing, conversions):
+You are a [ROLE].
+
+## YOUR ROLE
+[Detailed description of what the AI should do, referencing {sourceLang} for input language]
+
+## OUTPUT FORMAT
+[Exact format specification]
+
+## RULES
+1. [Rule 1 - what TO do]
+2. [Rule 2 - what NOT to do]
+
+## IMPORTANT
+- [Critical constraints]
+- Only output the [expected format], nothing else
+
+## GENERATION RULES
+
+1. **Always include {sourceLang} placeholder** where the source language should appear
+2. **Be explicit about output** - state what TO output and what NOT to output
+3. **Match complexity to task** - simple tasks get concise prompts, complex tasks get structured ones
+4. **Determine outputFormat correctly:**
+   - Use "text" for: translations, summaries, rewrites, explanations
+   - Use "code-block" for: code generation, CLI commands, scripts, technical outputs
+
+## EXAMPLES
+
+Voice: "translate to formal business English"
+{"name":"Business English","description":"Translates to formal business English","systemPrompt":"You are a professional business translator. Translate the following {sourceLang} text to formal business English. Use professional vocabulary, proper grammar, and maintain a corporate tone. Only output the translation, nothing else.","outputFormat":"text"}
+
+Voice: "convert to a git commit message"
+{"name":"Git Commit Message","description":"Converts description to conventional commit format","systemPrompt":"You are a Git expert.\\n\\n## YOUR ROLE\\nConvert the {sourceLang} description into a well-formatted git commit message.\\n\\n## OUTPUT FORMAT\\ntype(scope): subject\\n\\nbody (if needed)\\n\\n## RULES\\n1. Use conventional commit types: feat, fix, docs, style, refactor, test, chore\\n2. Keep subject under 50 characters\\n3. Use imperative mood\\n4. Add body only for complex changes\\n\\n## IMPORTANT\\n- Only output the commit message, nothing else","outputFormat":"code-block","codeBlockLang":"text"}
+
+Voice: "create bullet points for presentation"
+{"name":"Presentation Bullets","description":"Converts ideas into presentation bullet points","systemPrompt":"You are a presentation specialist. Transform {sourceLang} input into clear, concise bullet points.\\n\\n## RULES\\n1. Extract key ideas hierarchically\\n2. Keep bullets under 10 words\\n3. Use parallel structure\\n4. Maximum 5-7 main points\\n\\nOnly output the bullet points, nothing else.","outputFormat":"text"}`;
+
+  const response = await fetch(CHAT_API_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4.1-nano',
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
+        {
+          role: 'user',
+          content: voiceDescription,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 2000,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error?.message || `API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content?.trim() || '';
+
+  try {
+    const parsed = JSON.parse(content);
+    return {
+      name: parsed.name || 'Untitled Format',
+      description: parsed.description || '',
+      systemPrompt: parsed.systemPrompt || '',
+      outputFormat: parsed.outputFormat === 'code-block' ? 'code-block' : 'text',
+      codeBlockLang: parsed.codeBlockLang,
+    };
+  } catch {
+    throw new Error('Failed to parse generated format. Please try again.');
   }
 }

@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { open } from '@tauri-apps/plugin-shell';
 import { useAppStore } from '../stores/appStore';
-import { BackIcon, EyeIcon, EyeOffIcon, LockIcon, PlusIcon, ChevronIcon, TrashIcon } from './icons';
+import { BackIcon, EyeIcon, EyeOffIcon, LockIcon, PlusIcon, ChevronIcon, TrashIcon, MicrophoneIcon, StopIcon, SpinnerIcon } from './icons';
 import LanguageSelect from './LanguageSelect';
 import PromptSelect from './PromptSelect';
+import { transcribeAudio, generateOutputFormatFromVoice } from '../lib/openai';
 
 interface SettingsProps {
   onBack: () => void;
@@ -46,6 +47,13 @@ export default function Settings({ onBack }: SettingsProps) {
   const [newFormat, setNewFormat] = useState<NewOutputFormat>(emptyFormat);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
+  // Voice recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
   const handleSave = async () => {
     setIsSaving(true);
     await setApiKey(localApiKey);
@@ -87,6 +95,110 @@ export default function Settings({ onBack }: SettingsProps) {
 
   const handleUseSampleTemplate = () => {
     setNewFormat({ ...newFormat, systemPrompt: SAMPLE_TEMPLATE });
+  };
+
+  // Voice recording handlers
+  const startRecording = async () => {
+    if (!localApiKey) {
+      setVoiceError('Please add your OpenAI API key first');
+      return;
+    }
+
+    try {
+      setVoiceError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus',
+      });
+
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+
+        if (chunksRef.current.length === 0) {
+          setVoiceError('No audio recorded');
+          return;
+        }
+
+        setIsGenerating(true);
+
+        try {
+          const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+
+          // Step 1: Transcribe audio
+          const { text: voiceDescription } = await transcribeAudio(
+            audioBlob,
+            localApiKey,
+            localLanguage
+          );
+
+          if (!voiceDescription.trim()) {
+            setVoiceError('Could not transcribe audio. Please try again.');
+            return;
+          }
+
+          // Step 2: Generate output format from voice description
+          const generated = await generateOutputFormatFromVoice(voiceDescription, localApiKey);
+
+          // Step 3: Fill in the form
+          setNewFormat({
+            name: generated.name,
+            description: generated.description,
+            systemPrompt: generated.systemPrompt,
+            outputFormat: generated.outputFormat,
+            codeBlockLang: generated.codeBlockLang || '',
+          });
+
+          // Auto-expand the create section if not already
+          setShowCreateFormat(true);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'An error occurred';
+          setVoiceError(message);
+        } finally {
+          setIsGenerating(false);
+        }
+      };
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start(100);
+      setIsRecording(true);
+    } catch (err) {
+      setIsRecording(false);
+      const message = err instanceof Error ? err.message : 'Failed to access microphone';
+      setVoiceError(message);
+    }
+  };
+
+  const stopRecording = () => {
+    setIsRecording(false);
+
+    try {
+      if (mediaRecorderRef.current) {
+        if (mediaRecorderRef.current.state !== 'inactive') {
+          mediaRecorderRef.current.stop();
+        }
+        mediaRecorderRef.current.stream?.getTracks().forEach((track) => track.stop());
+        mediaRecorderRef.current = null;
+      }
+    } catch (err) {
+      console.error('Error stopping recording:', err);
+    }
+  };
+
+  const handleVoiceRecordToggle = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
   };
 
   const shortcutOptions = [
@@ -231,6 +343,47 @@ export default function Settings({ onBack }: SettingsProps) {
           {/* Create Form */}
           {showCreateFormat && (
             <div className="mt-4 p-4 bg-surface-100 dark:bg-surface-800 rounded-lg space-y-4">
+              {/* Voice Record Button */}
+              <div className="flex items-center justify-between pb-3 border-b border-surface-200 dark:border-surface-700">
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-surface-600 dark:text-surface-300">
+                    Describe with voice
+                  </p>
+                  <p className="text-[10px] text-surface-400 dark:text-surface-500 mt-0.5">
+                    {isGenerating ? 'Generating format...' : isRecording ? 'Recording... Click to stop' : 'Click to describe what you want'}
+                  </p>
+                </div>
+                <button
+                  onClick={handleVoiceRecordToggle}
+                  disabled={isGenerating}
+                  className={`
+                    w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200
+                    ${isRecording
+                      ? 'bg-error text-white animate-pulse'
+                      : isGenerating
+                        ? 'bg-surface-200 dark:bg-surface-700 text-surface-400 cursor-not-allowed'
+                        : 'bg-accent-500 hover:bg-accent-600 text-white hover:scale-105'
+                    }
+                  `}
+                  title={isRecording ? 'Stop recording' : 'Start recording'}
+                >
+                  {isGenerating ? (
+                    <SpinnerIcon size={18} className="animate-spin" />
+                  ) : isRecording ? (
+                    <StopIcon size={18} />
+                  ) : (
+                    <MicrophoneIcon size={18} />
+                  )}
+                </button>
+              </div>
+
+              {/* Voice Error */}
+              {voiceError && (
+                <div className="bg-error/10 border border-error/30 rounded-lg p-2 text-xs text-error">
+                  {voiceError}
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">
                   Name
