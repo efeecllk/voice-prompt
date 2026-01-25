@@ -25,20 +25,24 @@ https://github.com/user-attachments/assets/787b7a3f-6cbf-4a99-9eaf-13b02c35835a
 
 ## Installation
 
-### macOS (Homebrew)
+### macOS (Recommended)
+
+**We strongly recommend using Homebrew for macOS.** It handles installation, updates, and uninstallation automatically.
 
 ```bash
 brew tap efeecllk/voice-prompt
 brew install --cask voice-prompt
 ```
 
-Works on both **Apple Silicon** (M1/M2/M3) and **Intel** Macs.
+Works on both **Apple Silicon** (M1/M2/M3) and **Intel** Macs automatically.
 
-### macOS (Manual)
+**Why Homebrew?**
+- Automatic architecture detection (Apple Silicon vs Intel)
+- Easy updates with `brew upgrade`
+- Clean uninstall with `brew uninstall`
+- No manual DMG mounting needed
 
-Download from [Releases](https://github.com/efeecllk/voice-prompt/releases):
-- `Voice.Prompt_x.x.x_aarch64.dmg` - Apple Silicon
-- `Voice.Prompt_x.x.x_x64.dmg` - Intel Mac
+> **Note**: Direct DMG downloads are available in [Releases](https://github.com/efeecllk/voice-prompt/releases) but are not recommended. Use Homebrew instead.
 
 ### Windows
 
@@ -50,12 +54,12 @@ Download from [Releases](https://github.com/efeecllk/voice-prompt/releases):
 
 ### Update
 
-**macOS (Homebrew):**
+**macOS:**
 ```bash
 brew update && brew upgrade --cask voice-prompt
 ```
 
-**Windows/Manual:** Download the latest version from Releases.
+**Windows:** Download the latest version from [Releases](https://github.com/efeecllk/voice-prompt/releases).
 
 ---
 
