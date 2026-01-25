@@ -23,6 +23,7 @@ export interface CustomOutputFormat {
   id: string;
   name: string;
   description: string;
+  icon: string;
   systemPrompt: string;
   outputFormat: 'text' | 'code-block';
   codeBlockLang?: string;

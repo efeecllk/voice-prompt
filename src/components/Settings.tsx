@@ -22,6 +22,7 @@ Provide your response based on the input.`;
 interface NewOutputFormat {
   name: string;
   description: string;
+  icon: string;
   systemPrompt: string;
   outputFormat: 'text' | 'code-block';
   codeBlockLang: string;
@@ -30,10 +31,13 @@ interface NewOutputFormat {
 const emptyFormat: NewOutputFormat = {
   name: '',
   description: '',
+  icon: '✨',
   systemPrompt: '',
   outputFormat: 'text',
   codeBlockLang: '',
 };
+
+const EMOJI_OPTIONS = ['✨', '🚀', '💡', '🎯', '📝', '🔧', '🎨', '⚡', '🌟', '💬', '📊', '🔍'];
 
 export default function Settings({ onBack }: SettingsProps) {
   const { apiKey, sourceLanguage, outputPrompt, shortcut, theme, customOutputFormats, setApiKey, setSourceLanguage, setOutputPrompt, setShortcut, setTheme, addCustomOutputFormat, deleteCustomOutputFormat } = useAppStore();
@@ -70,6 +74,7 @@ export default function Settings({ onBack }: SettingsProps) {
     addCustomOutputFormat({
       name: newFormat.name.trim(),
       description: newFormat.description.trim(),
+      icon: newFormat.icon || '✨',
       systemPrompt: newFormat.systemPrompt.trim(),
       outputFormat: newFormat.outputFormat,
       codeBlockLang: newFormat.outputFormat === 'code-block' ? newFormat.codeBlockLang.trim() || 'text' : undefined,
@@ -148,10 +153,11 @@ export default function Settings({ onBack }: SettingsProps) {
           // Step 2: Generate output format from voice description
           const generated = await generateOutputFormatFromVoice(voiceDescription, localApiKey);
 
-          // Step 3: Fill in the form
+          // Step 3: Fill in the form (keep current icon or default)
           setNewFormat({
             name: generated.name,
             description: generated.description,
+            icon: newFormat.icon || '✨',
             systemPrompt: generated.systemPrompt,
             outputFormat: generated.outputFormat,
             codeBlockLang: generated.codeBlockLang || '',
@@ -302,7 +308,7 @@ export default function Settings({ onBack }: SettingsProps) {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-surface-700 dark:text-surface-200 truncate">
-                        ✨ {format.name}
+                        {format.icon || '✨'} {format.name}
                       </p>
                       {format.description && (
                         <p className="text-xs text-surface-400 dark:text-surface-500 truncate">
@@ -408,6 +414,32 @@ export default function Settings({ onBack }: SettingsProps) {
                   placeholder="What does this format do?"
                   className="w-full px-3 py-2 bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 rounded-lg text-sm text-surface-800 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-accent-500/50"
                 />
+              </div>
+
+              {/* Icon Selector */}
+              <div>
+                <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">
+                  Icon
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {EMOJI_OPTIONS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setNewFormat({ ...newFormat, icon: emoji })}
+                      className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all ${
+                        newFormat.icon === emoji
+                          ? 'bg-accent-500 ring-2 ring-accent-400 ring-offset-1 ring-offset-surface-100 dark:ring-offset-surface-800'
+                          : 'bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 hover:border-accent-400 dark:hover:border-accent-500'
+                      }`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-surface-400 dark:text-surface-500 mt-1.5">
+                  This icon will show in the main menu when this format is active
+                </p>
               </div>
 
               <div>

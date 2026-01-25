@@ -32,7 +32,7 @@ export default function PromptSelect({ value, onChange }: PromptSelectProps) {
     outputFormat: f.outputFormat,
     codeBlockLang: f.codeBlockLang,
     author: 'Custom',
-    icon: '✨',
+    icon: f.icon || '✨',
   }));
 
   // Combine built-in and custom templates
