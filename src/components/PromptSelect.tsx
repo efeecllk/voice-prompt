@@ -1,5 +1,6 @@
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react';
-import { PROMPT_TEMPLATES } from '../prompts';
+import { PROMPT_TEMPLATES, PromptTemplate } from '../prompts';
+import { useAppStore } from '../stores/appStore';
 import { ChevronIcon, CheckIcon } from './icons';
 
 interface PromptSelectProps {
@@ -20,7 +21,23 @@ function PromptIcon({ icon, className }: { icon?: string; className?: string }) 
 }
 
 export default function PromptSelect({ value, onChange }: PromptSelectProps) {
-  const selectedPrompt = PROMPT_TEMPLATES.find((p) => p.id === value) || PROMPT_TEMPLATES[0];
+  const { customOutputFormats } = useAppStore();
+
+  // Convert custom output formats to PromptTemplate format
+  const customTemplates: PromptTemplate[] = customOutputFormats.map((f) => ({
+    id: f.id,
+    name: f.name,
+    description: f.description,
+    systemPrompt: f.systemPrompt,
+    outputFormat: f.outputFormat,
+    codeBlockLang: f.codeBlockLang,
+    author: 'Custom',
+    icon: '✨',
+  }));
+
+  // Combine built-in and custom templates
+  const allTemplates = [...PROMPT_TEMPLATES, ...customTemplates];
+  const selectedPrompt = allTemplates.find((p) => p.id === value) || PROMPT_TEMPLATES[0];
 
   return (
     <Listbox value={value} onChange={onChange}>
@@ -42,7 +59,7 @@ export default function PromptSelect({ value, onChange }: PromptSelectProps) {
           anchor="bottom"
           className="w-[var(--button-width)] mt-1 max-h-72 overflow-auto rounded-lg bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 shadow-lg focus:outline-none z-50"
         >
-          {PROMPT_TEMPLATES.map((prompt) => (
+          {allTemplates.map((prompt) => (
             <ListboxOption
               key={prompt.id}
               value={prompt.id}

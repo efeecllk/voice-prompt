@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { open } from '@tauri-apps/plugin-shell';
 import { useAppStore } from '../stores/appStore';
-import { BackIcon, EyeIcon, EyeOffIcon, LockIcon } from './icons';
+import { BackIcon, EyeIcon, EyeOffIcon, LockIcon, PlusIcon, ChevronIcon, TrashIcon } from './icons';
 import LanguageSelect from './LanguageSelect';
 import PromptSelect from './PromptSelect';
 
@@ -9,14 +9,42 @@ interface SettingsProps {
   onBack: () => void;
 }
 
+const SAMPLE_TEMPLATE = `You are a helpful assistant. Process the following {sourceLang} input and respond accordingly.
+
+## Instructions
+- Be concise and clear
+- Focus on the user's intent
+
+## Output
+Provide your response based on the input.`;
+
+interface NewOutputFormat {
+  name: string;
+  description: string;
+  systemPrompt: string;
+  outputFormat: 'text' | 'code-block';
+  codeBlockLang: string;
+}
+
+const emptyFormat: NewOutputFormat = {
+  name: '',
+  description: '',
+  systemPrompt: '',
+  outputFormat: 'text',
+  codeBlockLang: '',
+};
+
 export default function Settings({ onBack }: SettingsProps) {
-  const { apiKey, sourceLanguage, outputPrompt, shortcut, theme, setApiKey, setSourceLanguage, setOutputPrompt, setShortcut, setTheme } = useAppStore();
+  const { apiKey, sourceLanguage, outputPrompt, shortcut, theme, customOutputFormats, setApiKey, setSourceLanguage, setOutputPrompt, setShortcut, setTheme, addCustomOutputFormat, deleteCustomOutputFormat } = useAppStore();
   const [localApiKey, setLocalApiKey] = useState(apiKey);
   const [localLanguage, setLocalLanguage] = useState(sourceLanguage);
   const [localPrompt, setLocalPrompt] = useState(outputPrompt);
   const [localShortcut, setLocalShortcut] = useState(shortcut);
   const [showKey, setShowKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showCreateFormat, setShowCreateFormat] = useState(false);
+  const [newFormat, setNewFormat] = useState<NewOutputFormat>(emptyFormat);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -26,6 +54,39 @@ export default function Settings({ onBack }: SettingsProps) {
     setShortcut(localShortcut);
     setIsSaving(false);
     onBack();
+  };
+
+  const handleCreateFormat = () => {
+    if (!newFormat.name.trim() || !newFormat.systemPrompt.trim()) return;
+
+    addCustomOutputFormat({
+      name: newFormat.name.trim(),
+      description: newFormat.description.trim(),
+      systemPrompt: newFormat.systemPrompt.trim(),
+      outputFormat: newFormat.outputFormat,
+      codeBlockLang: newFormat.outputFormat === 'code-block' ? newFormat.codeBlockLang.trim() || 'text' : undefined,
+    });
+
+    setNewFormat(emptyFormat);
+    setShowCreateFormat(false);
+  };
+
+  const handleDeleteFormat = (id: string) => {
+    if (deleteConfirm === id) {
+      deleteCustomOutputFormat(id);
+      setDeleteConfirm(null);
+      // If the deleted format was selected, reset to default
+      if (localPrompt === id) {
+        setLocalPrompt('default-translation');
+      }
+    } else {
+      setDeleteConfirm(id);
+      setTimeout(() => setDeleteConfirm(null), 3000);
+    }
+  };
+
+  const handleUseSampleTemplate = () => {
+    setNewFormat({ ...newFormat, systemPrompt: SAMPLE_TEMPLATE });
   };
 
   const shortcutOptions = [
@@ -111,6 +172,180 @@ export default function Settings({ onBack }: SettingsProps) {
           <p className="mt-1.5 text-xs text-surface-400 dark:text-surface-500">
             How your voice input will be processed
           </p>
+        </div>
+
+        {/* Create Custom Output Format */}
+        <div className="border-t border-surface-200 dark:border-surface-700 pt-4">
+          {/* Custom Formats List */}
+          {customOutputFormats.length > 0 && (
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-2">
+                Your Output Formats
+              </label>
+              <div className="space-y-2">
+                {customOutputFormats.map((format) => (
+                  <div
+                    key={format.id}
+                    className="flex items-center justify-between bg-surface-100 dark:bg-surface-800 rounded-lg px-3 py-2"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-surface-700 dark:text-surface-200 truncate">
+                        ✨ {format.name}
+                      </p>
+                      {format.description && (
+                        <p className="text-xs text-surface-400 dark:text-surface-500 truncate">
+                          {format.description}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleDeleteFormat(format.id)}
+                      className={`ml-2 p-1.5 rounded transition-colors ${
+                        deleteConfirm === format.id
+                          ? 'bg-error/20 text-error'
+                          : 'hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-400 hover:text-error'
+                      }`}
+                      title={deleteConfirm === format.id ? 'Click again to delete' : 'Delete'}
+                    >
+                      <TrashIcon size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Toggle Create Section */}
+          <button
+            onClick={() => setShowCreateFormat(!showCreateFormat)}
+            className="flex items-center gap-2 text-sm font-medium text-accent-500 hover:text-accent-600 dark:text-accent-400 dark:hover:text-accent-300 transition-colors"
+          >
+            <ChevronIcon
+              size={12}
+              className={`transform transition-transform ${showCreateFormat ? 'rotate-180' : ''}`}
+            />
+            <PlusIcon size={14} />
+            Create your own output format
+          </button>
+
+          {/* Create Form */}
+          {showCreateFormat && (
+            <div className="mt-4 p-4 bg-surface-100 dark:bg-surface-800 rounded-lg space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  value={newFormat.name}
+                  onChange={(e) => setNewFormat({ ...newFormat, name: e.target.value })}
+                  placeholder="My Custom Format"
+                  className="w-full px-3 py-2 bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 rounded-lg text-sm text-surface-800 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-accent-500/50"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">
+                  Description
+                </label>
+                <input
+                  type="text"
+                  value={newFormat.description}
+                  onChange={(e) => setNewFormat({ ...newFormat, description: e.target.value })}
+                  placeholder="What does this format do?"
+                  className="w-full px-3 py-2 bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 rounded-lg text-sm text-surface-800 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-accent-500/50"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-medium text-surface-500 dark:text-surface-400">
+                    System Prompt
+                  </label>
+                  <button
+                    onClick={handleUseSampleTemplate}
+                    className="text-xs text-accent-500 hover:text-accent-600 dark:text-accent-400"
+                  >
+                    Use sample template
+                  </button>
+                </div>
+                <textarea
+                  value={newFormat.systemPrompt}
+                  onChange={(e) => setNewFormat({ ...newFormat, systemPrompt: e.target.value })}
+                  placeholder="Enter your system prompt here...
+
+Use {sourceLang} as a placeholder for the source language."
+                  rows={6}
+                  className="w-full px-3 py-2 bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 rounded-lg text-sm text-surface-800 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-accent-500/50 resize-none font-mono"
+                />
+                <p className="text-[10px] text-surface-400 dark:text-surface-500 mt-1">
+                  Use <code className="bg-surface-200 dark:bg-surface-700 px-1 rounded">{'{sourceLang}'}</code> to insert the detected language
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">
+                  Output Type
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setNewFormat({ ...newFormat, outputFormat: 'text' })}
+                    className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-all ${
+                      newFormat.outputFormat === 'text'
+                        ? 'bg-surface-900 dark:bg-surface-100 border-surface-900 dark:border-surface-100 text-white dark:text-surface-900'
+                        : 'bg-white dark:bg-surface-700 border-surface-200 dark:border-surface-600 text-surface-500 dark:text-surface-400 hover:border-surface-300'
+                    }`}
+                  >
+                    Text
+                  </button>
+                  <button
+                    onClick={() => setNewFormat({ ...newFormat, outputFormat: 'code-block' })}
+                    className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-all ${
+                      newFormat.outputFormat === 'code-block'
+                        ? 'bg-surface-900 dark:bg-surface-100 border-surface-900 dark:border-surface-100 text-white dark:text-surface-900'
+                        : 'bg-white dark:bg-surface-700 border-surface-200 dark:border-surface-600 text-surface-500 dark:text-surface-400 hover:border-surface-300'
+                    }`}
+                  >
+                    Code Block
+                  </button>
+                </div>
+              </div>
+
+              {newFormat.outputFormat === 'code-block' && (
+                <div>
+                  <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">
+                    Code Language
+                  </label>
+                  <input
+                    type="text"
+                    value={newFormat.codeBlockLang}
+                    onChange={(e) => setNewFormat({ ...newFormat, codeBlockLang: e.target.value })}
+                    placeholder="e.g., bash, javascript, python"
+                    className="w-full px-3 py-2 bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 rounded-lg text-sm text-surface-800 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-accent-500/50"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    setShowCreateFormat(false);
+                    setNewFormat(emptyFormat);
+                  }}
+                  className="flex-1 py-2 px-3 bg-surface-200 dark:bg-surface-700 hover:bg-surface-300 dark:hover:bg-surface-600 text-surface-600 dark:text-surface-300 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateFormat}
+                  disabled={!newFormat.name.trim() || !newFormat.systemPrompt.trim()}
+                  className="flex-1 py-2 px-3 bg-accent-500 hover:bg-accent-600 disabled:bg-surface-300 dark:disabled:bg-surface-600 text-white rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed"
+                >
+                  Create Format
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Shortcut */}

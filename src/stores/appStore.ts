@@ -19,6 +19,17 @@ export interface CustomPrompt {
   updatedAt: number;
 }
 
+export interface CustomOutputFormat {
+  id: string;
+  name: string;
+  description: string;
+  systemPrompt: string;
+  outputFormat: 'text' | 'code-block';
+  codeBlockLang?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface LanguageOption {
   code: string;
   name: string;
@@ -64,6 +75,9 @@ interface AppState {
   // Custom Prompts
   customPrompts: CustomPrompt[];
 
+  // Custom Output Formats (for Output Format dropdown)
+  customOutputFormats: CustomOutputFormat[];
+
   // Current state
   isRecording: boolean;
   isProcessing: boolean;
@@ -89,6 +103,9 @@ interface AppState {
   addCustomPrompt: (prompt: Omit<CustomPrompt, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateCustomPrompt: (id: string, updates: Partial<Omit<CustomPrompt, 'id' | 'createdAt'>>) => void;
   deleteCustomPrompt: (id: string) => void;
+  addCustomOutputFormat: (format: Omit<CustomOutputFormat, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateCustomOutputFormat: (id: string, updates: Partial<Omit<CustomOutputFormat, 'id' | 'createdAt'>>) => void;
+  deleteCustomOutputFormat: (id: string) => void;
 }
 
 const HISTORY_LIMIT = 20;
@@ -109,6 +126,9 @@ export const useAppStore = create<AppState>()(
 
       // Custom Prompts
       customPrompts: [],
+
+      // Custom Output Formats
+      customOutputFormats: [],
 
       // Current state
       isRecording: false,
@@ -187,6 +207,30 @@ export const useAppStore = create<AppState>()(
         const customPrompts = get().customPrompts;
         set({ customPrompts: customPrompts.filter((p) => p.id !== id) });
       },
+
+      addCustomOutputFormat: (format) => {
+        const newFormat: CustomOutputFormat = {
+          ...format,
+          id: `output-${crypto.randomUUID()}`,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        const customOutputFormats = get().customOutputFormats;
+        set({ customOutputFormats: [newFormat, ...customOutputFormats] });
+      },
+
+      updateCustomOutputFormat: (id, updates) => {
+        const customOutputFormats = get().customOutputFormats;
+        const newFormats = customOutputFormats.map((f) =>
+          f.id === id ? { ...f, ...updates, updatedAt: Date.now() } : f
+        );
+        set({ customOutputFormats: newFormats });
+      },
+
+      deleteCustomOutputFormat: (id) => {
+        const customOutputFormats = get().customOutputFormats;
+        set({ customOutputFormats: customOutputFormats.filter((f) => f.id !== id) });
+      },
     }),
     {
       name: 'voice-prompt-storage',
@@ -198,6 +242,7 @@ export const useAppStore = create<AppState>()(
         theme: state.theme,
         history: state.history,
         customPrompts: state.customPrompts,
+        customOutputFormats: state.customOutputFormats,
       }),
     }
   )

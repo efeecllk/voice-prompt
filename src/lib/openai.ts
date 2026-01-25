@@ -1,5 +1,5 @@
 import { SUPPORTED_LANGUAGES } from '../stores/appStore';
-import { getPromptById, processPrompt } from '../prompts';
+import { getPromptById } from '../prompts';
 
 const WHISPER_API_URL = 'https://api.openai.com/v1/audio/transcriptions';
 const CHAT_API_URL = 'https://api.openai.com/v1/chat/completions';
@@ -49,13 +49,21 @@ export interface ProcessResult {
   codeBlockLang?: string;
 }
 
+export interface CustomTemplate {
+  systemPrompt: string;
+  outputFormat?: 'text' | 'code-block';
+  codeBlockLang?: string;
+}
+
 export async function processWithPrompt(
   sourceText: string,
   apiKey: string,
   sourceLanguage: string = 'tr',
-  promptId: string = 'default-translation'
+  promptId: string = 'default-translation',
+  customTemplate?: CustomTemplate
 ): Promise<ProcessResult> {
-  const template = getPromptById(promptId);
+  // Use custom template if provided, otherwise look up built-in template
+  const template = customTemplate || getPromptById(promptId);
   if (!template) {
     throw new Error(`Prompt template not found: ${promptId}`);
   }
@@ -69,7 +77,8 @@ export async function processWithPrompt(
   }
 
   const languageName = getLanguageName(sourceLanguage);
-  const systemPrompt = processPrompt(template, languageName);
+  // processPrompt expects PromptTemplate, but for custom templates we just need the replacement
+  const systemPrompt = template.systemPrompt.replace(/{sourceLang}/g, languageName);
 
   const response = await fetch(CHAT_API_URL, {
     method: 'POST',

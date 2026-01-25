@@ -1,6 +1,6 @@
 import { useRef, useCallback } from 'react';
 import { useAppStore } from '../stores/appStore';
-import { transcribeAudio, processWithPrompt } from '../lib/openai';
+import { transcribeAudio, processWithPrompt, CustomTemplate } from '../lib/openai';
 
 export function useAudioRecorder() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -10,6 +10,7 @@ export function useAudioRecorder() {
     apiKey,
     sourceLanguage,
     outputPrompt,
+    customOutputFormats,
     setRecording,
     setProcessing,
     setResult,
@@ -62,11 +63,25 @@ export function useAudioRecorder() {
           }
 
           // Step 2: Process with selected prompt
+          // Check if it's a custom output format
+          let customTemplate: CustomTemplate | undefined;
+          if (outputPrompt.startsWith('output-')) {
+            const customFormat = customOutputFormats.find((f) => f.id === outputPrompt);
+            if (customFormat) {
+              customTemplate = {
+                systemPrompt: customFormat.systemPrompt,
+                outputFormat: customFormat.outputFormat,
+                codeBlockLang: customFormat.codeBlockLang,
+              };
+            }
+          }
+
           const result = await processWithPrompt(
             sourceText,
             apiKey,
             detectedLanguage,
-            outputPrompt
+            outputPrompt,
+            customTemplate
           );
 
           // Set results and add to history
@@ -88,7 +103,7 @@ export function useAudioRecorder() {
       const message = err instanceof Error ? err.message : 'Failed to access microphone';
       setError(message);
     }
-  }, [apiKey, sourceLanguage, outputPrompt, clearCurrent, setRecording, setProcessing, setResult, setError, addToHistory]);
+  }, [apiKey, sourceLanguage, outputPrompt, customOutputFormats, clearCurrent, setRecording, setProcessing, setResult, setError, addToHistory]);
 
   const stopRecording = useCallback(() => {
     // Always set recording to false first
