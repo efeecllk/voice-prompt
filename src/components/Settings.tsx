@@ -60,28 +60,27 @@ export default function Settings({ onBack }: SettingsProps) {
 
   const handleSave = async () => {
     setIsSaving(true);
+
+    // If creating a new output format with valid content, save it first
+    if (showCreateFormat && newFormat.name.trim() && newFormat.systemPrompt.trim()) {
+      addCustomOutputFormat({
+        name: newFormat.name.trim(),
+        description: newFormat.description.trim(),
+        icon: newFormat.icon || '✨',
+        systemPrompt: newFormat.systemPrompt.trim(),
+        outputFormat: newFormat.outputFormat,
+        codeBlockLang: newFormat.outputFormat === 'code-block' ? newFormat.codeBlockLang.trim() || 'text' : undefined,
+      });
+      setNewFormat(emptyFormat);
+      setShowCreateFormat(false);
+    }
+
     await setApiKey(localApiKey);
     setSourceLanguage(localLanguage);
     setOutputPrompt(localPrompt);
     setShortcut(localShortcut);
     setIsSaving(false);
     onBack();
-  };
-
-  const handleCreateFormat = () => {
-    if (!newFormat.name.trim() || !newFormat.systemPrompt.trim()) return;
-
-    addCustomOutputFormat({
-      name: newFormat.name.trim(),
-      description: newFormat.description.trim(),
-      icon: newFormat.icon || '✨',
-      systemPrompt: newFormat.systemPrompt.trim(),
-      outputFormat: newFormat.outputFormat,
-      codeBlockLang: newFormat.outputFormat === 'code-block' ? newFormat.codeBlockLang.trim() || 'text' : undefined,
-    });
-
-    setNewFormat(emptyFormat);
-    setShowCreateFormat(false);
   };
 
   const handleDeleteFormat = (id: string) => {
@@ -510,25 +509,6 @@ Use {sourceLang} as a placeholder for the source language."
                   />
                 </div>
               )}
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  onClick={() => {
-                    setShowCreateFormat(false);
-                    setNewFormat(emptyFormat);
-                  }}
-                  className="flex-1 py-2 px-3 bg-surface-200 dark:bg-surface-700 hover:bg-surface-300 dark:hover:bg-surface-600 text-surface-600 dark:text-surface-300 rounded-lg text-sm font-medium transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateFormat}
-                  disabled={!newFormat.name.trim() || !newFormat.systemPrompt.trim()}
-                  className="flex-1 py-2 px-3 bg-accent-500 hover:bg-accent-600 disabled:bg-surface-300 dark:disabled:bg-surface-600 text-white rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed"
-                >
-                  Create Format
-                </button>
-              </div>
             </div>
           )}
         </div>
