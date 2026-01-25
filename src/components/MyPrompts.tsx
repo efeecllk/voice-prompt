@@ -419,7 +419,7 @@ You can use {sourceLang} as a placeholder for the source language."
                 <div className="flex items-start justify-between">
                   <button
                     onClick={() => handleEdit(prompt)}
-                    className="flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
+                    className="flex-1 min-w-0 text-left px-2 py-1 -mx-2 -my-1 rounded-md hover:bg-surface-100 dark:hover:bg-surface-700/50 transition-colors cursor-pointer"
                   >
                     <h4 className="text-sm font-medium text-surface-800 dark:text-surface-100 truncate">
                       {prompt.name}
