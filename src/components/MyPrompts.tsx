@@ -288,11 +288,15 @@ export default function MyPrompts({ onBack }: MyPromptsProps) {
               {editingPrompt.name && (
                 <button
                   onClick={() => copyToClipboard(editingPrompt.name, 'name')}
-                  className="flex items-center gap-1 text-xs text-surface-400 hover:text-accent-500 transition-colors"
+                  className={`flex items-center gap-1 text-xs transition-colors ${
+                    copiedField === 'name'
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-surface-400 hover:text-accent-500'
+                  }`}
                   disabled={isRecording || isProcessing}
                 >
-                  <CopyIcon size={12} />
-                  {copiedField === 'name' ? 'Copied!' : 'Copy'}
+                  {copiedField === 'name' ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
+                  {copiedField === 'name' ? 'Done' : 'Copy'}
                 </button>
               )}
             </div>
@@ -314,11 +318,15 @@ export default function MyPrompts({ onBack }: MyPromptsProps) {
               {editingPrompt.description && (
                 <button
                   onClick={() => copyToClipboard(editingPrompt.description, 'description')}
-                  className="flex items-center gap-1 text-xs text-surface-400 hover:text-accent-500 transition-colors"
+                  className={`flex items-center gap-1 text-xs transition-colors ${
+                    copiedField === 'description'
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-surface-400 hover:text-accent-500'
+                  }`}
                   disabled={isRecording || isProcessing}
                 >
-                  <CopyIcon size={12} />
-                  {copiedField === 'description' ? 'Copied!' : 'Copy'}
+                  {copiedField === 'description' ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
+                  {copiedField === 'description' ? 'Done' : 'Copy'}
                 </button>
               )}
             </div>
@@ -340,11 +348,15 @@ export default function MyPrompts({ onBack }: MyPromptsProps) {
               {editingPrompt.systemPrompt && (
                 <button
                   onClick={() => copyToClipboard(editingPrompt.systemPrompt, 'systemPrompt')}
-                  className="flex items-center gap-1 text-xs text-surface-400 hover:text-accent-500 transition-colors"
+                  className={`flex items-center gap-1 text-xs transition-colors ${
+                    copiedField === 'systemPrompt'
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-surface-400 hover:text-accent-500'
+                  }`}
                   disabled={isRecording || isProcessing}
                 >
-                  <CopyIcon size={12} />
-                  {copiedField === 'systemPrompt' ? 'Copied!' : 'Copy'}
+                  {copiedField === 'systemPrompt' ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
+                  {copiedField === 'systemPrompt' ? 'Done' : 'Copy'}
                 </button>
               )}
             </div>
@@ -435,10 +447,14 @@ You can use {sourceLang} as a placeholder for the source language."
                         e.stopPropagation();
                         copyToClipboard(prompt.systemPrompt, `prompt-${prompt.id}`);
                       }}
-                      className="p-1.5 hover:bg-surface-200 dark:hover:bg-surface-700 rounded-md transition-colors text-surface-400 hover:text-accent-500"
+                      className={`p-1.5 rounded-md transition-colors ${
+                        copiedField === `prompt-${prompt.id}`
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                          : 'hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-400 hover:text-accent-500'
+                      }`}
                       title={copiedField === `prompt-${prompt.id}` ? 'Copied!' : 'Copy prompt'}
                     >
-                      <CopyIcon size={14} />
+                      {copiedField === `prompt-${prompt.id}` ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
                     </span>
                     <span
                       role="button"
