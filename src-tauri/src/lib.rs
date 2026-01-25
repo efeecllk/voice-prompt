@@ -7,6 +7,8 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 
 #[cfg(target_os = "macos")]
 use cocoa::appkit::{NSApp, NSApplication};
+#[cfg(target_os = "macos")]
+use cocoa::base::YES;
 
 #[cfg(target_os = "macos")]
 use objc::{msg_send, sel, sel_impl, runtime::Object};
@@ -96,7 +98,7 @@ fn show_window_at_position(_app: &AppHandle, window: &tauri::WebviewWindow, x: f
     {
         unsafe {
             let ns_app = NSApp();
-            ns_app.activateIgnoringOtherApps_(true);
+            ns_app.activateIgnoringOtherApps_(YES);
         }
     }
 
@@ -126,7 +128,7 @@ fn show_window_at_cursor(app: &AppHandle, window: &tauri::WebviewWindow) {
         {
             unsafe {
                 let ns_app = NSApp();
-                ns_app.activateIgnoringOtherApps_(true);
+                ns_app.activateIgnoringOtherApps_(YES);
             }
         }
 
