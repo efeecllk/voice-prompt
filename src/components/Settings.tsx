@@ -76,7 +76,6 @@ export default function Settings({ onBack }: SettingsProps) {
     setOutputPrompt(localPrompt);
     setShortcut(localShortcut);
     setIsSaving(false);
-    onBack();
   };
 
   const handleDeleteFormat = (id: string) => {
