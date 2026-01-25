@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAppStore, CustomPrompt } from '../stores/appStore';
-import { BackIcon, FileTextIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon } from './icons';
+import { BackIcon, FileTextIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, MicrophoneIcon, StopIcon, SpinnerIcon } from './icons';
+import { transcribeAudio, generatePromptFromVoice } from '../lib/openai';
 
 interface MyPromptsProps {
   onBack: () => void;
@@ -22,13 +23,21 @@ const emptyPrompt: EditingPrompt = {
 };
 
 export default function MyPrompts({ onBack }: MyPromptsProps) {
-  const { customPrompts, addCustomPrompt, updateCustomPrompt, deleteCustomPrompt } = useAppStore();
+  const { apiKey, sourceLanguage, customPrompts, addCustomPrompt, updateCustomPrompt, deleteCustomPrompt } = useAppStore();
   const [view, setView] = useState<View>('list');
   const [editingPrompt, setEditingPrompt] = useState<EditingPrompt>(emptyPrompt);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
+  // Voice recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
   const handleCreateNew = () => {
     setEditingPrompt(emptyPrompt);
+    setError(null);
     setView('edit');
   };
 
@@ -39,6 +48,7 @@ export default function MyPrompts({ onBack }: MyPromptsProps) {
       description: prompt.description,
       systemPrompt: prompt.systemPrompt,
     });
+    setError(null);
     setView('edit');
   };
 
@@ -81,6 +91,108 @@ export default function MyPrompts({ onBack }: MyPromptsProps) {
   const handleCancel = () => {
     setView('list');
     setEditingPrompt(emptyPrompt);
+    setError(null);
+  };
+
+  // Voice recording handlers
+  const startRecording = async () => {
+    if (!apiKey) {
+      setError('Please add your OpenAI API key in Settings');
+      return;
+    }
+
+    try {
+      setError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus',
+      });
+
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        // Stop all tracks
+        stream.getTracks().forEach((track) => track.stop());
+
+        if (chunksRef.current.length === 0) {
+          setError('No audio recorded');
+          return;
+        }
+
+        setIsProcessing(true);
+
+        try {
+          const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+
+          // Step 1: Transcribe audio
+          const { text: voiceDescription } = await transcribeAudio(
+            audioBlob,
+            apiKey,
+            sourceLanguage
+          );
+
+          if (!voiceDescription.trim()) {
+            setError('Could not transcribe audio. Please try again.');
+            return;
+          }
+
+          // Step 2: Generate prompt from voice description
+          const generatedPrompt = await generatePromptFromVoice(voiceDescription, apiKey);
+
+          // Step 3: Fill in the form with generated content
+          setEditingPrompt({
+            ...editingPrompt,
+            name: generatedPrompt.name,
+            description: generatedPrompt.description,
+            systemPrompt: generatedPrompt.systemPrompt,
+          });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'An error occurred';
+          setError(message);
+        } finally {
+          setIsProcessing(false);
+        }
+      };
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start(100);
+      setIsRecording(true);
+    } catch (err) {
+      setIsRecording(false);
+      const message = err instanceof Error ? err.message : 'Failed to access microphone';
+      setError(message);
+    }
+  };
+
+  const stopRecording = () => {
+    setIsRecording(false);
+
+    try {
+      if (mediaRecorderRef.current) {
+        if (mediaRecorderRef.current.state !== 'inactive') {
+          mediaRecorderRef.current.stop();
+        }
+        mediaRecorderRef.current.stream?.getTracks().forEach((track) => track.stop());
+        mediaRecorderRef.current = null;
+      }
+    } catch (err) {
+      console.error('Error stopping recording:', err);
+    }
+  };
+
+  const handleRecordToggle = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
   };
 
   if (view === 'edit') {
@@ -92,6 +204,7 @@ export default function MyPrompts({ onBack }: MyPromptsProps) {
             <button
               onClick={handleCancel}
               className="p-1.5 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"
+              disabled={isRecording || isProcessing}
             >
               <BackIcon size={18} className="text-surface-400" />
             </button>
@@ -101,7 +214,7 @@ export default function MyPrompts({ onBack }: MyPromptsProps) {
           </div>
           <button
             onClick={handleSave}
-            disabled={!editingPrompt.name.trim() || !editingPrompt.systemPrompt.trim()}
+            disabled={!editingPrompt.name.trim() || !editingPrompt.systemPrompt.trim() || isRecording || isProcessing}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-500 hover:bg-accent-600 disabled:bg-surface-300 dark:disabled:bg-surface-700 text-white rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed"
           >
             <CheckIcon size={14} />
@@ -111,6 +224,51 @@ export default function MyPrompts({ onBack }: MyPromptsProps) {
 
         {/* Edit Form */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Voice Record Button */}
+          {!editingPrompt.id && (
+            <div className="flex flex-col items-center py-4 border-b border-surface-200 dark:border-surface-700 mb-2">
+              <button
+                onClick={handleRecordToggle}
+                disabled={isProcessing}
+                className={`
+                  w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200
+                  ${isRecording
+                    ? 'bg-error text-white animate-pulse'
+                    : isProcessing
+                      ? 'bg-surface-200 dark:bg-surface-700 text-surface-400 cursor-not-allowed'
+                      : 'bg-accent-500 hover:bg-accent-600 text-white hover:scale-105'
+                  }
+                `}
+              >
+                {isProcessing ? (
+                  <SpinnerIcon size={28} className="animate-spin" />
+                ) : isRecording ? (
+                  <StopIcon size={28} />
+                ) : (
+                  <MicrophoneIcon size={28} />
+                )}
+              </button>
+              <p className="text-xs text-surface-500 dark:text-surface-400 mt-3 text-center">
+                {isProcessing
+                  ? 'Generating prompt...'
+                  : isRecording
+                    ? 'Recording... Click to stop'
+                    : 'Describe your prompt with voice'
+                }
+              </p>
+              <p className="text-[10px] text-surface-400 dark:text-surface-500 mt-1 text-center max-w-[200px]">
+                {!isRecording && !isProcessing && 'Tell me what kind of prompt you want to create'}
+              </p>
+            </div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <div className="bg-error/10 border border-error/30 rounded-lg p-3 text-sm text-error-dark dark:text-error-light">
+              {error}
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5 uppercase tracking-wider">
               Name
@@ -120,7 +278,8 @@ export default function MyPrompts({ onBack }: MyPromptsProps) {
               value={editingPrompt.name}
               onChange={(e) => setEditingPrompt({ ...editingPrompt, name: e.target.value })}
               placeholder="My Custom Prompt"
-              className="w-full px-3 py-2 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg text-sm text-surface-800 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-accent-500/50 focus:border-accent-500"
+              disabled={isRecording || isProcessing}
+              className="w-full px-3 py-2 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg text-sm text-surface-800 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-accent-500/50 focus:border-accent-500 disabled:opacity-50"
             />
           </div>
 
@@ -133,7 +292,8 @@ export default function MyPrompts({ onBack }: MyPromptsProps) {
               value={editingPrompt.description}
               onChange={(e) => setEditingPrompt({ ...editingPrompt, description: e.target.value })}
               placeholder="What does this prompt do?"
-              className="w-full px-3 py-2 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg text-sm text-surface-800 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-accent-500/50 focus:border-accent-500"
+              disabled={isRecording || isProcessing}
+              className="w-full px-3 py-2 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg text-sm text-surface-800 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-accent-500/50 focus:border-accent-500 disabled:opacity-50"
             />
           </div>
 
@@ -148,7 +308,8 @@ export default function MyPrompts({ onBack }: MyPromptsProps) {
 
 You can use {sourceLang} as a placeholder for the source language."
               rows={10}
-              className="w-full px-3 py-2 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg text-sm text-surface-800 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-accent-500/50 focus:border-accent-500 resize-none font-mono"
+              disabled={isRecording || isProcessing}
+              className="w-full px-3 py-2 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg text-sm text-surface-800 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-accent-500/50 focus:border-accent-500 resize-none font-mono disabled:opacity-50"
             />
             <p className="text-[10px] text-surface-400 dark:text-surface-500 mt-1.5">
               Use <code className="bg-surface-100 dark:bg-surface-800 px-1 rounded">{'{sourceLang}'}</code> to insert the source language
@@ -187,18 +348,18 @@ You can use {sourceLang} as a placeholder for the source language."
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
         {customPrompts.length === 0 ? (
-          <div className="text-center py-12 text-surface-400 dark:text-surface-500">
+          <div className="text-center py-8 text-surface-400 dark:text-surface-500">
             <FileTextIcon size={32} className="mx-auto mb-3 opacity-50" />
             <p className="text-sm font-medium">No custom prompts yet</p>
             <p className="text-xs mt-1 opacity-75">
-              Create your own prompt templates
+              Create prompts with your voice
             </p>
             <button
               onClick={handleCreateNew}
-              className="mt-4 flex items-center gap-1.5 mx-auto px-4 py-2 bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 rounded-lg text-sm text-surface-600 dark:text-surface-300 transition-colors"
+              className="mt-4 flex items-center gap-2 mx-auto px-4 py-2.5 bg-accent-500 hover:bg-accent-600 text-white rounded-lg text-sm font-medium transition-colors"
             >
-              <PlusIcon size={14} />
-              Create your first prompt
+              <MicrophoneIcon size={16} />
+              Create with voice
             </button>
           </div>
         ) : (
