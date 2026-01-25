@@ -16,9 +16,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -27,7 +27,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Install Rust stable
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -43,19 +43,37 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'Voice Prompt v__VERSION__'
+          releaseName: 'Voice Prompt ${{ github.ref_name }}'
           releaseBody: |
             ## What's New
 
-            See the [changelog](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+            See the changelog for details.
 
-            ## Download (Windows)
+            ## Download
 
+            ### macOS
+            - **Apple Silicon (M1/M2/M3)**: Download `Voice.Prompt_*_aarch64.dmg`
+            - **Intel**: Download `Voice.Prompt_*_x64.dmg`
+
+            Or install via Homebrew:
+            ```bash
+            brew tap efeecllk/voice-prompt
+            brew install --cask voice-prompt
+            ```
+
+            ### Windows
             - `.msi` - Windows Installer (recommended)
-            - `.exe` - NSIS Installer
+            - `-setup.exe` - NSIS Installer
 
             ## Installation
 
+            **macOS:**
+            1. Download the `.dmg` file for your architecture
+            2. Open it and drag Voice Prompt to Applications
+            3. Open Voice Prompt from Applications
+            4. If you see a security warning, go to System Settings > Privacy & Security and click "Open Anyway"
+
+            **Windows:**
             1. Download the `.msi` installer
             2. Run the installer
             3. Open Voice Prompt from Start Menu

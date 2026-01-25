@@ -11,6 +11,12 @@ use cocoa::appkit::{NSApp, NSApplication};
 #[cfg(target_os = "macos")]
 use objc::{msg_send, sel, sel_impl, runtime::Object};
 
+#[cfg(target_os = "windows")]
+use windows::Win32::UI::WindowsAndMessaging::{
+    SetWindowPos, SetForegroundWindow, ShowWindow,
+    HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SW_SHOW,
+};
+
 // macOS NSWindow constants
 #[cfg(target_os = "macos")]
 const NS_WINDOW_COLLECTION_BEHAVIOR_CAN_JOIN_ALL_SPACES: u64 = 1 << 0;
@@ -41,16 +47,51 @@ fn configure_macos_window(window: &tauri::WebviewWindow) {
     }
 }
 
+#[cfg(target_os = "windows")]
+fn configure_windows_window(window: &tauri::WebviewWindow) {
+    use windows::Win32::Foundation::HWND;
+
+    // Get the HWND and configure window properties
+    if let Ok(hwnd) = window.hwnd() {
+        unsafe {
+            let hwnd = HWND(hwnd.0);
+            // Set window as topmost so it appears above other windows
+            let _ = SetWindowPos(
+                hwnd,
+                HWND_TOPMOST,
+                0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
+            );
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn activate_windows_app(window: &tauri::WebviewWindow) {
+    use windows::Win32::Foundation::HWND;
+
+    if let Ok(hwnd) = window.hwnd() {
+        unsafe {
+            let hwnd = HWND(hwnd.0);
+            let _ = ShowWindow(hwnd, SW_SHOW);
+            let _ = SetForegroundWindow(hwnd);
+        }
+    }
+}
+
 fn show_window_at_position(_app: &AppHandle, window: &tauri::WebviewWindow, x: f64, y: f64) {
-    // Configure macOS-specific window properties for fullscreen support
+    // Configure platform-specific window properties
     #[cfg(target_os = "macos")]
     configure_macos_window(window);
+
+    #[cfg(target_os = "windows")]
+    configure_windows_window(window);
 
     let _ = window.set_position(PhysicalPosition::new(x as i32, y as i32));
     let _ = window.show();
     let _ = window.set_focus();
 
-    // On macOS, we need to activate the app to bring window to front
+    // Platform-specific activation to bring window to front
     #[cfg(target_os = "macos")]
     {
         unsafe {
@@ -58,6 +99,9 @@ fn show_window_at_position(_app: &AppHandle, window: &tauri::WebviewWindow, x: f
             ns_app.activateIgnoringOtherApps_(true);
         }
     }
+
+    #[cfg(target_os = "windows")]
+    activate_windows_app(window);
 }
 
 fn show_window_at_cursor(app: &AppHandle, window: &tauri::WebviewWindow) {
@@ -72,6 +116,9 @@ fn show_window_at_cursor(app: &AppHandle, window: &tauri::WebviewWindow) {
         #[cfg(target_os = "macos")]
         configure_macos_window(window);
 
+        #[cfg(target_os = "windows")]
+        configure_windows_window(window);
+
         let _ = window.show();
         let _ = window.set_focus();
 
@@ -82,6 +129,9 @@ fn show_window_at_cursor(app: &AppHandle, window: &tauri::WebviewWindow) {
                 ns_app.activateIgnoringOtherApps_(true);
             }
         }
+
+        #[cfg(target_os = "windows")]
+        activate_windows_app(window);
     }
 }
 

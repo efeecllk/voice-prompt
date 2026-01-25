@@ -12,45 +12,129 @@ jobs:
     steps:
       - name: Get release info
         id: release
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
         run: |
-          VERSION="${{ github.event.release.tag_name }}"
-          VERSION="${VERSION#v}"  # Remove 'v' prefix
+          VERSION="${TAG_NAME#v}"  # Remove 'v' prefix
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Download DMG and calculate SHA256
+      - name: Download DMGs and calculate SHA256
         id: sha
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          REPO: ${{ github.repository }}
         run: |
-          VERSION="${{ steps.release.outputs.version }}"
-          DMG_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/Voice.Prompt_${VERSION}_aarch64.dmg"
+          # ARM64 DMG
+          ARM_URL="https://github.com/${REPO}/releases/download/v${VERSION}/Voice.Prompt_${VERSION}_aarch64.dmg"
+          echo "Downloading ARM64 from: $ARM_URL"
+          curl -L -o arm64.dmg "$ARM_URL"
+          ARM_SHA=$(shasum -a 256 arm64.dmg | cut -d' ' -f1)
+          echo "arm_sha=$ARM_SHA" >> $GITHUB_OUTPUT
+          echo "ARM64 SHA256: $ARM_SHA"
 
-          echo "Downloading from: $DMG_URL"
-          curl -L -o voice-prompt.dmg "$DMG_URL"
-
-          SHA256=$(shasum -a 256 voice-prompt.dmg | cut -d' ' -f1)
-          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
-          echo "SHA256: $SHA256"
+          # Intel DMG (x64)
+          INTEL_URL="https://github.com/${REPO}/releases/download/v${VERSION}/Voice.Prompt_${VERSION}_x64.dmg"
+          echo "Downloading Intel from: $INTEL_URL"
+          if curl -L --fail -o intel.dmg "$INTEL_URL"; then
+            INTEL_SHA=$(shasum -a 256 intel.dmg | cut -d' ' -f1)
+            echo "intel_sha=$INTEL_SHA" >> $GITHUB_OUTPUT
+            echo "Intel SHA256: $INTEL_SHA"
+          else
+            echo "Intel DMG not found, will use ARM64 only"
+            echo "intel_sha=" >> $GITHUB_OUTPUT
+          fi
 
       - name: Clone Homebrew tap
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
-          git clone https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/efeecllk/homebrew-voice-prompt.git
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/efeecllk/homebrew-voice-prompt.git"
 
       - name: Update cask
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          ARM_SHA: ${{ steps.sha.outputs.arm_sha }}
+          INTEL_SHA: ${{ steps.sha.outputs.intel_sha }}
         run: |
-          VERSION="${{ steps.release.outputs.version }}"
-          SHA256="${{ steps.sha.outputs.sha256 }}"
-
           cd homebrew-voice-prompt
 
-          # Update version and SHA256 in cask file
-          sed -i '' "s/version \".*\"/version \"$VERSION\"/" Casks/voice-prompt.rb
-          sed -i '' "s/sha256 \".*\"/sha256 \"$SHA256\"/" Casks/voice-prompt.rb
+          if [ -n "$INTEL_SHA" ]; then
+            # Multi-architecture cask
+            cat > Casks/voice-prompt.rb << 'CASK_EOF'
+cask "voice-prompt" do
+  arch arm: "aarch64", intel: "x64"
 
+CASK_EOF
+            echo "  version \"$VERSION\"" >> Casks/voice-prompt.rb
+            echo "  sha256 arm:   \"$ARM_SHA\"," >> Casks/voice-prompt.rb
+            echo "         intel: \"$INTEL_SHA\"" >> Casks/voice-prompt.rb
+            cat >> Casks/voice-prompt.rb << 'CASK_EOF'
+
+  url "https://github.com/efeecllk/voice-prompt/releases/download/v#{version}/Voice.Prompt_#{version}_#{arch}.dmg"
+  name "Voice Prompt"
+  desc "Lightweight macOS menu bar app for speech-to-text translation"
+  homepage "https://github.com/efeecllk/voice-prompt"
+
+  depends_on macos: ">= :catalina"
+
+  app "Voice Prompt.app"
+
+  postflight do
+    system_command "/usr/bin/defaults",
+                   args: ["write", "com.voiceprompt.app", "SUAutomaticallyUpdate", "-bool", "true"],
+                   sudo: false
+  end
+
+  zap trash: [
+    "~/Library/Application Support/com.voiceprompt.app",
+    "~/Library/Caches/com.voiceprompt.app",
+    "~/Library/Preferences/com.voiceprompt.app.plist",
+    "~/Library/Saved Application State/com.voiceprompt.app.savedState",
+  ]
+end
+CASK_EOF
+          else
+            # ARM64-only cask (fallback)
+            cat > Casks/voice-prompt.rb << 'CASK_EOF'
+cask "voice-prompt" do
+CASK_EOF
+            echo "  version \"$VERSION\"" >> Casks/voice-prompt.rb
+            echo "  sha256 \"$ARM_SHA\"" >> Casks/voice-prompt.rb
+            cat >> Casks/voice-prompt.rb << 'CASK_EOF'
+
+  url "https://github.com/efeecllk/voice-prompt/releases/download/v#{version}/Voice.Prompt_#{version}_aarch64.dmg"
+  name "Voice Prompt"
+  desc "Lightweight macOS menu bar app for speech-to-text translation"
+  homepage "https://github.com/efeecllk/voice-prompt"
+
+  depends_on macos: ">= :catalina"
+  depends_on arch: :arm64
+
+  app "Voice Prompt.app"
+
+  postflight do
+    system_command "/usr/bin/defaults",
+                   args: ["write", "com.voiceprompt.app", "SUAutomaticallyUpdate", "-bool", "true"],
+                   sudo: false
+  end
+
+  zap trash: [
+    "~/Library/Application Support/com.voiceprompt.app",
+    "~/Library/Caches/com.voiceprompt.app",
+    "~/Library/Preferences/com.voiceprompt.app.plist",
+    "~/Library/Saved Application State/com.voiceprompt.app.savedState",
+  ]
+end
+CASK_EOF
+          fi
+
+          echo "Updated cask file:"
           cat Casks/voice-prompt.rb
 
       - name: Commit and push
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
         run: |
-          VERSION="${{ steps.release.outputs.version }}"
-
           cd homebrew-voice-prompt
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
