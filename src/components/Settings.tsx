@@ -19,14 +19,15 @@ const SAMPLE_TEMPLATE = `You are a helpful assistant. Process the following {sou
 ## Output
 Provide your response based on the input.`;
 
-interface NewOutputFormat {
+interface EditingOutputFormat {
+  id?: string; // If present, we're editing; if not, we're creating
   name: string;
   description: string;
   icon: string;
   systemPrompt: string;
 }
 
-const emptyFormat: NewOutputFormat = {
+const emptyFormat: EditingOutputFormat = {
   name: '',
   description: '',
   icon: '✨',
@@ -36,7 +37,7 @@ const emptyFormat: NewOutputFormat = {
 const EMOJI_OPTIONS = ['✨', '🚀', '💡', '🎯', '📝', '🔧', '🎨', '⚡', '🌟', '💬', '📊', '🔍'];
 
 export default function Settings({ onBack }: SettingsProps) {
-  const { apiKey, sourceLanguage, outputPrompt, shortcut, theme, customOutputFormats, setApiKey, setSourceLanguage, setOutputPrompt, setShortcut, setTheme, addCustomOutputFormat, deleteCustomOutputFormat } = useAppStore();
+  const { apiKey, sourceLanguage, outputPrompt, shortcut, theme, customOutputFormats, setApiKey, setSourceLanguage, setOutputPrompt, setShortcut, setTheme, addCustomOutputFormat, updateCustomOutputFormat, deleteCustomOutputFormat } = useAppStore();
   const [localApiKey, setLocalApiKey] = useState(apiKey);
   const [localLanguage, setLocalLanguage] = useState(sourceLanguage);
   const [localPrompt, setLocalPrompt] = useState(outputPrompt);
@@ -44,7 +45,7 @@ export default function Settings({ onBack }: SettingsProps) {
   const [showKey, setShowKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showCreateFormat, setShowCreateFormat] = useState(false);
-  const [newFormat, setNewFormat] = useState<NewOutputFormat>(emptyFormat);
+  const [editingFormat, setEditingFormat] = useState<EditingOutputFormat>(emptyFormat);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [showIconPicker, setShowIconPicker] = useState(false);
 
@@ -58,16 +59,27 @@ export default function Settings({ onBack }: SettingsProps) {
   const handleSave = async () => {
     setIsSaving(true);
 
-    // If creating a new output format with valid content, save it first
-    if (showCreateFormat && newFormat.name.trim() && newFormat.systemPrompt.trim()) {
-      addCustomOutputFormat({
-        name: newFormat.name.trim(),
-        description: newFormat.description.trim(),
-        icon: newFormat.icon || '✨',
-        systemPrompt: newFormat.systemPrompt.trim(),
-        outputFormat: 'text',
-      });
-      setNewFormat(emptyFormat);
+    // If creating/editing an output format with valid content, save it first
+    if (showCreateFormat && editingFormat.name.trim() && editingFormat.systemPrompt.trim()) {
+      if (editingFormat.id) {
+        // Update existing format
+        updateCustomOutputFormat(editingFormat.id, {
+          name: editingFormat.name.trim(),
+          description: editingFormat.description.trim(),
+          icon: editingFormat.icon || '✨',
+          systemPrompt: editingFormat.systemPrompt.trim(),
+        });
+      } else {
+        // Create new format
+        addCustomOutputFormat({
+          name: editingFormat.name.trim(),
+          description: editingFormat.description.trim(),
+          icon: editingFormat.icon || '✨',
+          systemPrompt: editingFormat.systemPrompt.trim(),
+          outputFormat: 'text',
+        });
+      }
+      setEditingFormat(emptyFormat);
       setShowCreateFormat(false);
     }
 
@@ -76,6 +88,17 @@ export default function Settings({ onBack }: SettingsProps) {
     setOutputPrompt(localPrompt);
     setShortcut(localShortcut);
     setIsSaving(false);
+  };
+
+  const handleEditFormat = (format: typeof customOutputFormats[0]) => {
+    setEditingFormat({
+      id: format.id,
+      name: format.name,
+      description: format.description,
+      icon: format.icon || '✨',
+      systemPrompt: format.systemPrompt,
+    });
+    setShowCreateFormat(true);
   };
 
   const handleDeleteFormat = (id: string) => {
@@ -93,7 +116,7 @@ export default function Settings({ onBack }: SettingsProps) {
   };
 
   const handleUseSampleTemplate = () => {
-    setNewFormat({ ...newFormat, systemPrompt: SAMPLE_TEMPLATE });
+    setEditingFormat({ ...editingFormat, systemPrompt: SAMPLE_TEMPLATE });
   };
 
   // Voice recording handlers
@@ -148,10 +171,10 @@ export default function Settings({ onBack }: SettingsProps) {
           const generated = await generateOutputFormatFromVoice(voiceDescription, localApiKey);
 
           // Step 3: Fill in the form (keep current icon or default)
-          setNewFormat({
+          setEditingFormat({
             name: generated.name,
             description: generated.description,
-            icon: newFormat.icon || '✨',
+            icon: editingFormat.icon || '✨',
             systemPrompt: generated.systemPrompt,
           });
 
@@ -294,9 +317,10 @@ export default function Settings({ onBack }: SettingsProps) {
               </label>
               <div className="space-y-2">
                 {customOutputFormats.map((format) => (
-                  <div
+                  <button
                     key={format.id}
-                    className="flex items-center justify-between bg-surface-100 dark:bg-surface-800 rounded-lg px-3 py-2"
+                    onClick={() => handleEditFormat(format)}
+                    className="w-full text-left flex items-center justify-between bg-surface-100 dark:bg-surface-800 rounded-lg px-3 py-2 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors group"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-surface-700 dark:text-surface-200 truncate">
@@ -308,18 +332,22 @@ export default function Settings({ onBack }: SettingsProps) {
                         </p>
                       )}
                     </div>
-                    <button
-                      onClick={() => handleDeleteFormat(format.id)}
+                    <span
+                      role="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteFormat(format.id);
+                      }}
                       className={`ml-2 p-1.5 rounded transition-colors ${
                         deleteConfirm === format.id
                           ? 'bg-error/20 text-error'
-                          : 'hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-400 hover:text-error'
+                          : 'opacity-0 group-hover:opacity-100 hover:bg-surface-300 dark:hover:bg-surface-600 text-surface-400 hover:text-error'
                       }`}
                       title={deleteConfirm === format.id ? 'Click again to delete' : 'Delete'}
                     >
                       <TrashIcon size={14} />
-                    </button>
-                  </div>
+                    </span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -327,7 +355,15 @@ export default function Settings({ onBack }: SettingsProps) {
 
           {/* Toggle Create Section */}
           <button
-            onClick={() => setShowCreateFormat(!showCreateFormat)}
+            onClick={() => {
+              if (showCreateFormat) {
+                setShowCreateFormat(false);
+                setEditingFormat(emptyFormat);
+              } else {
+                setEditingFormat(emptyFormat);
+                setShowCreateFormat(true);
+              }
+            }}
             className="flex items-center gap-2 text-sm font-medium text-accent-500 hover:text-accent-600 dark:text-accent-400 dark:hover:text-accent-300 transition-colors"
           >
             <ChevronIcon
@@ -335,7 +371,7 @@ export default function Settings({ onBack }: SettingsProps) {
               className={`transform transition-transform ${showCreateFormat ? 'rotate-180' : ''}`}
             />
             <PlusIcon size={14} />
-            Create your own output format
+            {showCreateFormat && editingFormat.id ? 'Editing format' : 'Create your own output format'}
           </button>
 
           {/* Create Form */}
@@ -388,8 +424,8 @@ export default function Settings({ onBack }: SettingsProps) {
                 </label>
                 <input
                   type="text"
-                  value={newFormat.name}
-                  onChange={(e) => setNewFormat({ ...newFormat, name: e.target.value })}
+                  value={editingFormat.name}
+                  onChange={(e) => setEditingFormat({ ...editingFormat, name: e.target.value })}
                   placeholder="My Custom Format"
                   className="w-full px-3 py-2 bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 rounded-lg text-sm text-surface-800 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-accent-500/50"
                 />
@@ -401,8 +437,8 @@ export default function Settings({ onBack }: SettingsProps) {
                 </label>
                 <input
                   type="text"
-                  value={newFormat.description}
-                  onChange={(e) => setNewFormat({ ...newFormat, description: e.target.value })}
+                  value={editingFormat.description}
+                  onChange={(e) => setEditingFormat({ ...editingFormat, description: e.target.value })}
                   placeholder="What does this format do?"
                   className="w-full px-3 py-2 bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 rounded-lg text-sm text-surface-800 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-accent-500/50"
                 />
@@ -419,7 +455,7 @@ export default function Settings({ onBack }: SettingsProps) {
                     onClick={() => setShowIconPicker(!showIconPicker)}
                     className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 rounded-lg hover:border-accent-400 dark:hover:border-accent-500 transition-colors"
                   >
-                    <span className="text-xl">{newFormat.icon}</span>
+                    <span className="text-xl">{editingFormat.icon}</span>
                     <span className="text-xs text-surface-400">Click to change</span>
                   </button>
 
@@ -431,11 +467,11 @@ export default function Settings({ onBack }: SettingsProps) {
                             key={emoji}
                             type="button"
                             onClick={() => {
-                              setNewFormat({ ...newFormat, icon: emoji });
+                              setEditingFormat({ ...editingFormat, icon: emoji });
                               setShowIconPicker(false);
                             }}
                             className={`w-8 h-8 rounded-md text-lg flex items-center justify-center transition-all hover:bg-surface-100 dark:hover:bg-surface-600 ${
-                              newFormat.icon === emoji ? 'bg-accent-100 dark:bg-accent-900/30' : ''
+                              editingFormat.icon === emoji ? 'bg-accent-100 dark:bg-accent-900/30' : ''
                             }`}
                           >
                             {emoji}
@@ -460,8 +496,8 @@ export default function Settings({ onBack }: SettingsProps) {
                   </button>
                 </div>
                 <textarea
-                  value={newFormat.systemPrompt}
-                  onChange={(e) => setNewFormat({ ...newFormat, systemPrompt: e.target.value })}
+                  value={editingFormat.systemPrompt}
+                  onChange={(e) => setEditingFormat({ ...editingFormat, systemPrompt: e.target.value })}
                   placeholder="Enter your system prompt here...
 
 Use {sourceLang} as a placeholder for the source language."
