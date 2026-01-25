@@ -24,8 +24,6 @@ interface NewOutputFormat {
   description: string;
   icon: string;
   systemPrompt: string;
-  outputFormat: 'text' | 'code-block';
-  codeBlockLang: string;
 }
 
 const emptyFormat: NewOutputFormat = {
@@ -33,8 +31,6 @@ const emptyFormat: NewOutputFormat = {
   description: '',
   icon: '✨',
   systemPrompt: '',
-  outputFormat: 'text',
-  codeBlockLang: '',
 };
 
 const EMOJI_OPTIONS = ['✨', '🚀', '💡', '🎯', '📝', '🔧', '🎨', '⚡', '🌟', '💬', '📊', '🔍'];
@@ -68,8 +64,7 @@ export default function Settings({ onBack }: SettingsProps) {
         description: newFormat.description.trim(),
         icon: newFormat.icon || '✨',
         systemPrompt: newFormat.systemPrompt.trim(),
-        outputFormat: newFormat.outputFormat,
-        codeBlockLang: newFormat.outputFormat === 'code-block' ? newFormat.codeBlockLang.trim() || 'text' : undefined,
+        outputFormat: 'text',
       });
       setNewFormat(emptyFormat);
       setShowCreateFormat(false);
@@ -158,8 +153,6 @@ export default function Settings({ onBack }: SettingsProps) {
             description: generated.description,
             icon: newFormat.icon || '✨',
             systemPrompt: generated.systemPrompt,
-            outputFormat: generated.outputFormat,
-            codeBlockLang: generated.codeBlockLang || '',
           });
 
           // Auto-expand the create section if not already
@@ -467,48 +460,6 @@ Use {sourceLang} as a placeholder for the source language."
                 </p>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">
-                  Output Type
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setNewFormat({ ...newFormat, outputFormat: 'text' })}
-                    className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-all ${
-                      newFormat.outputFormat === 'text'
-                        ? 'bg-surface-900 dark:bg-surface-100 border-surface-900 dark:border-surface-100 text-white dark:text-surface-900'
-                        : 'bg-white dark:bg-surface-700 border-surface-200 dark:border-surface-600 text-surface-500 dark:text-surface-400 hover:border-surface-300'
-                    }`}
-                  >
-                    Text
-                  </button>
-                  <button
-                    onClick={() => setNewFormat({ ...newFormat, outputFormat: 'code-block' })}
-                    className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-all ${
-                      newFormat.outputFormat === 'code-block'
-                        ? 'bg-surface-900 dark:bg-surface-100 border-surface-900 dark:border-surface-100 text-white dark:text-surface-900'
-                        : 'bg-white dark:bg-surface-700 border-surface-200 dark:border-surface-600 text-surface-500 dark:text-surface-400 hover:border-surface-300'
-                    }`}
-                  >
-                    Code Block
-                  </button>
-                </div>
-              </div>
-
-              {newFormat.outputFormat === 'code-block' && (
-                <div>
-                  <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">
-                    Code Language
-                  </label>
-                  <input
-                    type="text"
-                    value={newFormat.codeBlockLang}
-                    onChange={(e) => setNewFormat({ ...newFormat, codeBlockLang: e.target.value })}
-                    placeholder="e.g., bash, javascript, python"
-                    className="w-full px-3 py-2 bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 rounded-lg text-sm text-surface-800 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-accent-500/50"
-                  />
-                </div>
-              )}
             </div>
           )}
         </div>
