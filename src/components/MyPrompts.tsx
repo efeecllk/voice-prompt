@@ -412,15 +412,13 @@ You can use {sourceLang} as a placeholder for the source language."
         ) : (
           <div className="space-y-2">
             {customPrompts.map((prompt) => (
-              <div
+              <button
                 key={prompt.id}
-                className="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg p-3 group"
+                onClick={() => handleEdit(prompt)}
+                className="w-full text-left bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg p-3 group hover:bg-surface-50 dark:hover:bg-surface-750 hover:border-surface-300 dark:hover:border-surface-600 transition-colors cursor-pointer"
               >
                 <div className="flex items-start justify-between">
-                  <button
-                    onClick={() => handleEdit(prompt)}
-                    className="flex-1 min-w-0 text-left px-2 py-1 -mx-2 -my-1 rounded-md hover:bg-surface-100 dark:hover:bg-surface-700/50 transition-colors cursor-pointer"
-                  >
+                  <div className="flex-1 min-w-0">
                     <h4 className="text-sm font-medium text-surface-800 dark:text-surface-100 truncate">
                       {prompt.name}
                     </h4>
@@ -429,19 +427,21 @@ You can use {sourceLang} as a placeholder for the source language."
                         {prompt.description}
                       </p>
                     )}
-                  </button>
+                  </div>
                   <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
+                    <span
+                      role="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         copyToClipboard(prompt.systemPrompt, `prompt-${prompt.id}`);
                       }}
-                      className="p-1.5 hover:bg-surface-100 dark:hover:bg-surface-700 rounded-md transition-colors text-surface-400 hover:text-accent-500"
+                      className="p-1.5 hover:bg-surface-200 dark:hover:bg-surface-700 rounded-md transition-colors text-surface-400 hover:text-accent-500"
                       title={copiedField === `prompt-${prompt.id}` ? 'Copied!' : 'Copy prompt'}
                     >
                       <CopyIcon size={14} />
-                    </button>
-                    <button
+                    </span>
+                    <span
+                      role="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDelete(prompt.id);
@@ -449,18 +449,18 @@ You can use {sourceLang} as a placeholder for the source language."
                       className={`p-1.5 rounded-md transition-colors ${
                         deleteConfirm === prompt.id
                           ? 'bg-error/10 text-error'
-                          : 'hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-error'
+                          : 'hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-400 hover:text-error'
                       }`}
                       title={deleteConfirm === prompt.id ? 'Click again to confirm' : 'Delete'}
                     >
                       <TrashIcon size={14} />
-                    </button>
+                    </span>
                   </div>
                 </div>
                 <p className="text-[10px] text-surface-300 dark:text-surface-600 mt-2 font-mono truncate">
                   {prompt.systemPrompt.substring(0, 80)}...
                 </p>
-              </div>
+              </button>
             ))}
           </div>
         )}
