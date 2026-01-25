@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useAppStore, CustomPrompt } from '../stores/appStore';
-import { BackIcon, FileTextIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, MicrophoneIcon, StopIcon, SpinnerIcon } from './icons';
+import { BackIcon, FileTextIcon, PlusIcon, TrashIcon, CheckIcon, MicrophoneIcon, StopIcon, SpinnerIcon, CopyIcon } from './icons';
 import { transcribeAudio, generatePromptFromVoice } from '../lib/openai';
 
 interface MyPromptsProps {
@@ -32,8 +32,19 @@ export default function MyPrompts({ onBack }: MyPromptsProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  const copyToClipboard = async (text: string, fieldName: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(fieldName);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
 
   const handleCreateNew = () => {
     setEditingPrompt(emptyPrompt);
@@ -270,9 +281,21 @@ export default function MyPrompts({ onBack }: MyPromptsProps) {
           )}
 
           <div>
-            <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5 uppercase tracking-wider">
-              Name
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider">
+                Name
+              </label>
+              {editingPrompt.name && (
+                <button
+                  onClick={() => copyToClipboard(editingPrompt.name, 'name')}
+                  className="flex items-center gap-1 text-xs text-surface-400 hover:text-accent-500 transition-colors"
+                  disabled={isRecording || isProcessing}
+                >
+                  <CopyIcon size={12} />
+                  {copiedField === 'name' ? 'Copied!' : 'Copy'}
+                </button>
+              )}
+            </div>
             <input
               type="text"
               value={editingPrompt.name}
@@ -284,9 +307,21 @@ export default function MyPrompts({ onBack }: MyPromptsProps) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5 uppercase tracking-wider">
-              Description
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider">
+                Description
+              </label>
+              {editingPrompt.description && (
+                <button
+                  onClick={() => copyToClipboard(editingPrompt.description, 'description')}
+                  className="flex items-center gap-1 text-xs text-surface-400 hover:text-accent-500 transition-colors"
+                  disabled={isRecording || isProcessing}
+                >
+                  <CopyIcon size={12} />
+                  {copiedField === 'description' ? 'Copied!' : 'Copy'}
+                </button>
+              )}
+            </div>
             <input
               type="text"
               value={editingPrompt.description}
@@ -298,9 +333,21 @@ export default function MyPrompts({ onBack }: MyPromptsProps) {
           </div>
 
           <div className="flex-1">
-            <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5 uppercase tracking-wider">
-              System Prompt
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider">
+                System Prompt
+              </label>
+              {editingPrompt.systemPrompt && (
+                <button
+                  onClick={() => copyToClipboard(editingPrompt.systemPrompt, 'systemPrompt')}
+                  className="flex items-center gap-1 text-xs text-surface-400 hover:text-accent-500 transition-colors"
+                  disabled={isRecording || isProcessing}
+                >
+                  <CopyIcon size={12} />
+                  {copiedField === 'systemPrompt' ? 'Copied!' : 'Copy'}
+                </button>
+              )}
+            </div>
             <textarea
               value={editingPrompt.systemPrompt}
               onChange={(e) => setEditingPrompt({ ...editingPrompt, systemPrompt: e.target.value })}
@@ -370,7 +417,10 @@ You can use {sourceLang} as a placeholder for the source language."
                 className="bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg p-3 group"
               >
                 <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
+                  <button
+                    onClick={() => handleEdit(prompt)}
+                    className="flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
+                  >
                     <h4 className="text-sm font-medium text-surface-800 dark:text-surface-100 truncate">
                       {prompt.name}
                     </h4>
@@ -379,17 +429,23 @@ You can use {sourceLang} as a placeholder for the source language."
                         {prompt.description}
                       </p>
                     )}
-                  </div>
+                  </button>
                   <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
-                      onClick={() => handleEdit(prompt)}
-                      className="p-1.5 hover:bg-surface-100 dark:hover:bg-surface-700 rounded-md transition-colors text-surface-400 hover:text-surface-600 dark:hover:text-surface-300"
-                      title="Edit"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyToClipboard(prompt.systemPrompt, `prompt-${prompt.id}`);
+                      }}
+                      className="p-1.5 hover:bg-surface-100 dark:hover:bg-surface-700 rounded-md transition-colors text-surface-400 hover:text-accent-500"
+                      title={copiedField === `prompt-${prompt.id}` ? 'Copied!' : 'Copy prompt'}
                     >
-                      <EditIcon size={14} />
+                      <CopyIcon size={14} />
                     </button>
                     <button
-                      onClick={() => handleDelete(prompt.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(prompt.id);
+                      }}
                       className={`p-1.5 rounded-md transition-colors ${
                         deleteConfirm === prompt.id
                           ? 'bg-error/10 text-error'
