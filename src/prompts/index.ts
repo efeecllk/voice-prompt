@@ -78,17 +78,8 @@ Success criteria:
   },
 ];
 
-export function getPromptById(id: string, customPrompts: PromptTemplate[] = []): PromptTemplate | undefined {
-  // Check built-in prompts first
-  const builtIn = PROMPT_TEMPLATES.find((p) => p.id === id);
-  if (builtIn) return builtIn;
-
-  // Check custom prompts
-  return customPrompts.find((p) => p.id === id);
-}
-
-export function getAllPrompts(customPrompts: PromptTemplate[] = []): PromptTemplate[] {
-  return [...PROMPT_TEMPLATES, ...customPrompts];
+export function getPromptById(id: string): PromptTemplate | undefined {
+  return PROMPT_TEMPLATES.find((p) => p.id === id);
 }
 
 export function processPrompt(template: PromptTemplate, sourceLang: string): string {
