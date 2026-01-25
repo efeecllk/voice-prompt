@@ -1,20 +1,25 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../stores/appStore';
-import { HistoryIcon, CopyIcon, CheckIcon, TrashIcon, StarIcon, StarFilledIcon } from './icons';
+import { HistoryIcon, CopyIcon, CheckIcon, TrashIcon, StarIcon, StarFilledIcon, FileTextIcon } from './icons';
 
 type Tab = 'history' | 'favorites';
 
 export default function History() {
-  const { history, clearHistory, toggleFavorite } = useAppStore();
+  const { history, clearHistory, toggleFavorite, addCustomPrompt } = useAppStore();
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [savedId, setSavedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('history');
   const timeoutRef = useRef<number | null>(null);
+  const savedTimeoutRef = useRef<number | null>(null);
 
-  // Cleanup timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
+      }
+      if (savedTimeoutRef.current) {
+        clearTimeout(savedTimeoutRef.current);
       }
     };
   }, []);
@@ -43,6 +48,29 @@ export default function History() {
     } catch (err) {
       console.error('Failed to copy:', err);
     }
+  };
+
+  const handleSaveToPrompts = (id: string, turkishText: string, englishText: string) => {
+    // Create a name from the first few words of the result
+    const name = englishText.split(' ').slice(0, 4).join(' ') + (englishText.split(' ').length > 4 ? '...' : '');
+
+    addCustomPrompt({
+      name,
+      description: turkishText,
+      systemPrompt: englishText,
+    });
+
+    setSavedId(id);
+
+    // Clear previous timeout
+    if (savedTimeoutRef.current) {
+      clearTimeout(savedTimeoutRef.current);
+    }
+
+    savedTimeoutRef.current = window.setTimeout(() => {
+      setSavedId(null);
+      savedTimeoutRef.current = null;
+    }, 2000);
   };
 
   return (
@@ -137,6 +165,25 @@ export default function History() {
                 >
                   {item.isFavorite ? <StarFilledIcon size={14} /> : <StarIcon size={14} />}
                 </button>
+                {item.isFavorite && (
+                  <button
+                    onClick={() => handleSaveToPrompts(item.id, item.turkishText, item.englishText)}
+                    className={`
+                      p-1.5 rounded-md transition-all flex-shrink-0 mt-0.5
+                      ${savedId === item.id
+                        ? 'text-success'
+                        : 'text-surface-300 dark:text-surface-600 hover:text-accent-500 dark:hover:text-accent-400 opacity-0 group-hover:opacity-100'
+                      }
+                    `}
+                    title="Save to My Prompts"
+                  >
+                    {savedId === item.id ? (
+                      <CheckIcon size={14} />
+                    ) : (
+                      <FileTextIcon size={14} />
+                    )}
+                  </button>
+                )}
                 <button
                   onClick={() => handleCopy(item.id, item.englishText)}
                   className={`
