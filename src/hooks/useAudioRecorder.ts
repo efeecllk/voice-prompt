@@ -10,6 +10,7 @@ export function useAudioRecorder() {
     apiKey,
     sourceLanguage,
     outputPrompt,
+    customPrompts,
     setRecording,
     setProcessing,
     setResult,
@@ -62,11 +63,21 @@ export function useAudioRecorder() {
           }
 
           // Step 2: Process with selected prompt
+          // Convert customPrompts to PromptTemplate format for the API
+          const customPromptsAsTemplates = customPrompts.map((p) => ({
+            id: p.id,
+            name: p.name,
+            description: p.description,
+            systemPrompt: p.systemPrompt,
+            outputFormat: 'text' as const,
+          }));
+
           const result = await processWithPrompt(
             sourceText,
             apiKey,
             detectedLanguage,
-            outputPrompt
+            outputPrompt,
+            customPromptsAsTemplates
           );
 
           // Set results and add to history
@@ -88,7 +99,7 @@ export function useAudioRecorder() {
       const message = err instanceof Error ? err.message : 'Failed to access microphone';
       setError(message);
     }
-  }, [apiKey, sourceLanguage, outputPrompt, clearCurrent, setRecording, setProcessing, setResult, setError, addToHistory]);
+  }, [apiKey, sourceLanguage, outputPrompt, customPrompts, clearCurrent, setRecording, setProcessing, setResult, setError, addToHistory]);
 
   const stopRecording = useCallback(() => {
     // Always set recording to false first

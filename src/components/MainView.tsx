@@ -2,15 +2,16 @@ import Recorder from './Recorder';
 import ResultCard from './ResultCard';
 import History from './History';
 import { useAppStore } from '../stores/appStore';
-import { SettingsIcon, AppLogoIcon } from './icons';
+import { SettingsIcon, AppLogoIcon, FileTextIcon } from './icons';
 
 interface MainViewProps {
   onSettingsClick: () => void;
+  onMyPromptsClick: () => void;
 }
 
 const RALPH_WIGGUM_ICON = 'https://static.simpsonswiki.com/images/1/14/Ralph_Wiggum.png';
 
-export default function MainView({ onSettingsClick }: MainViewProps) {
+export default function MainView({ onSettingsClick, onMyPromptsClick }: MainViewProps) {
   const { currentTurkish, currentEnglish, error, apiKey, outputPrompt } = useAppStore();
   const isRalphMode = outputPrompt === 'ralph-wiggum';
 
@@ -28,13 +29,22 @@ export default function MainView({ onSettingsClick }: MainViewProps) {
             {isRalphMode ? 'Ralph Mode' : 'Voice Prompt'}
           </span>
         </div>
-        <button
-          onClick={onSettingsClick}
-          className="p-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"
-          title="Settings"
-        >
-          <SettingsIcon size={18} className="text-surface-400 dark:text-surface-500" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onMyPromptsClick}
+            className="p-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"
+            title="My Prompts"
+          >
+            <FileTextIcon size={18} className="text-surface-400 dark:text-surface-500" />
+          </button>
+          <button
+            onClick={onSettingsClick}
+            className="p-2 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-colors"
+            title="Settings"
+          >
+            <SettingsIcon size={18} className="text-surface-400 dark:text-surface-500" />
+          </button>
+        </div>
       </div>
 
       {/* Main Content */}

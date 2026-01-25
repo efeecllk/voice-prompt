@@ -7,6 +7,16 @@ export interface HistoryItem {
   turkishText: string;
   englishText: string;
   timestamp: number;
+  isFavorite?: boolean;
+}
+
+export interface CustomPrompt {
+  id: string;
+  name: string;
+  description: string;
+  systemPrompt: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface LanguageOption {
@@ -51,6 +61,9 @@ interface AppState {
   // History
   history: HistoryItem[];
 
+  // Custom Prompts
+  customPrompts: CustomPrompt[];
+
   // Current state
   isRecording: boolean;
   isProcessing: boolean;
@@ -72,6 +85,10 @@ interface AppState {
   addToHistory: (turkish: string, english: string) => void;
   clearHistory: () => void;
   clearCurrent: () => void;
+  toggleFavorite: (id: string) => void;
+  addCustomPrompt: (prompt: Omit<CustomPrompt, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateCustomPrompt: (id: string, updates: Partial<Omit<CustomPrompt, 'id' | 'createdAt'>>) => void;
+  deleteCustomPrompt: (id: string) => void;
 }
 
 const HISTORY_LIMIT = 20;
@@ -89,6 +106,9 @@ export const useAppStore = create<AppState>()(
 
       // History
       history: [],
+
+      // Custom Prompts
+      customPrompts: [],
 
       // Current state
       isRecording: false,
@@ -135,6 +155,38 @@ export const useAppStore = create<AppState>()(
 
       clearCurrent: () =>
         set({ currentTurkish: '', currentEnglish: '', error: null }),
+
+      toggleFavorite: (id) => {
+        const history = get().history;
+        const newHistory = history.map((item) =>
+          item.id === id ? { ...item, isFavorite: !item.isFavorite } : item
+        );
+        set({ history: newHistory });
+      },
+
+      addCustomPrompt: (prompt) => {
+        const newPrompt: CustomPrompt = {
+          ...prompt,
+          id: `custom-${crypto.randomUUID()}`,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        const customPrompts = get().customPrompts;
+        set({ customPrompts: [newPrompt, ...customPrompts] });
+      },
+
+      updateCustomPrompt: (id, updates) => {
+        const customPrompts = get().customPrompts;
+        const newPrompts = customPrompts.map((p) =>
+          p.id === id ? { ...p, ...updates, updatedAt: Date.now() } : p
+        );
+        set({ customPrompts: newPrompts });
+      },
+
+      deleteCustomPrompt: (id) => {
+        const customPrompts = get().customPrompts;
+        set({ customPrompts: customPrompts.filter((p) => p.id !== id) });
+      },
     }),
     {
       name: 'voice-prompt-storage',
@@ -145,6 +197,7 @@ export const useAppStore = create<AppState>()(
         shortcut: state.shortcut,
         theme: state.theme,
         history: state.history,
+        customPrompts: state.customPrompts,
       }),
     }
   )

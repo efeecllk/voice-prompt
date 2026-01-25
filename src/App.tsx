@@ -3,11 +3,12 @@ import MainView from './components/MainView';
 import { useAppStore } from './stores/appStore';
 import { useGlobalShortcut } from './hooks/useGlobalShortcut';
 
-// Lazy load Settings - not needed at startup
+// Lazy load views - not needed at startup
 const Settings = lazy(() => import('./components/Settings'));
+const MyPrompts = lazy(() => import('./components/MyPrompts'));
 
 function App() {
-  const [view, setView] = useState<'main' | 'settings'>('main');
+  const [view, setView] = useState<'main' | 'settings' | 'my-prompts'>('main');
   const { theme, loadApiKey } = useAppStore();
 
   // Register global shortcut
@@ -42,19 +43,33 @@ function App() {
     }
   }, [theme, applyTheme]);
 
-  return (
-    <div className="h-screen w-screen bg-surface-50 dark:bg-surface-900 text-surface-800 dark:text-surface-100">
-      {view === 'main' ? (
-        <MainView onSettingsClick={() => setView('settings')} />
-      ) : (
-        <Suspense fallback={
+  const renderView = () => {
+    if (view === 'main') {
+      return (
+        <MainView
+          onSettingsClick={() => setView('settings')}
+          onMyPromptsClick={() => setView('my-prompts')}
+        />
+      );
+    }
+
+    return (
+      <Suspense
+        fallback={
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-6 w-6 border-2 border-surface-300 border-t-surface-600" />
           </div>
-        }>
-          <Settings onBack={() => setView('main')} />
-        </Suspense>
-      )}
+        }
+      >
+        {view === 'settings' && <Settings onBack={() => setView('main')} />}
+        {view === 'my-prompts' && <MyPrompts onBack={() => setView('main')} />}
+      </Suspense>
+    );
+  };
+
+  return (
+    <div className="h-screen w-screen bg-surface-50 dark:bg-surface-900 text-surface-800 dark:text-surface-100">
+      {renderView()}
     </div>
   );
 }

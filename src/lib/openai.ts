@@ -1,5 +1,5 @@
 import { SUPPORTED_LANGUAGES } from '../stores/appStore';
-import { getPromptById, processPrompt } from '../prompts';
+import { getPromptById, processPrompt, PromptTemplate } from '../prompts';
 
 const WHISPER_API_URL = 'https://api.openai.com/v1/audio/transcriptions';
 const CHAT_API_URL = 'https://api.openai.com/v1/chat/completions';
@@ -53,9 +53,10 @@ export async function processWithPrompt(
   sourceText: string,
   apiKey: string,
   sourceLanguage: string = 'tr',
-  promptId: string = 'default-translation'
+  promptId: string = 'default-translation',
+  customPrompts: PromptTemplate[] = []
 ): Promise<ProcessResult> {
-  const template = getPromptById(promptId);
+  const template = getPromptById(promptId, customPrompts);
   if (!template) {
     throw new Error(`Prompt template not found: ${promptId}`);
   }

@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { CopyIcon, CheckIcon } from './icons';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { CopyIcon, CheckIcon, StarIcon, StarFilledIcon } from './icons';
 import { useAppStore, SUPPORTED_LANGUAGES } from '../stores/appStore';
 
 interface ResultCardProps {
@@ -10,9 +10,24 @@ interface ResultCardProps {
 export default function ResultCard({ turkish, english }: ResultCardProps) {
   const [copiedTr, setCopiedTr] = useState(false);
   const [copiedEn, setCopiedEn] = useState(false);
-  const sourceLanguage = useAppStore((state) => state.sourceLanguage);
+  const { sourceLanguage, history, toggleFavorite } = useAppStore();
   const sourceTimeoutRef = useRef<number | null>(null);
   const englishTimeoutRef = useRef<number | null>(null);
+
+  // Find if current result is in history and favorited
+  const currentHistoryItem = useMemo(() => {
+    return history.find(
+      (item) => item.turkishText === turkish && item.englishText === english
+    );
+  }, [history, turkish, english]);
+
+  const isFavorited = currentHistoryItem?.isFavorite ?? false;
+
+  const handleToggleFavorite = () => {
+    if (currentHistoryItem) {
+      toggleFavorite(currentHistoryItem.id);
+    }
+  };
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -66,19 +81,36 @@ export default function ResultCard({ turkish, english }: ResultCardProps) {
             <span className="text-[10px] tracking-wider text-surface-400 dark:text-surface-500 uppercase font-semibold">
               {sourceLanguageName}
             </span>
-            <button
-              onClick={handleCopySource}
-              className={`
-                p-1 rounded transition-all duration-200
-                ${copiedTr
-                  ? 'text-success opacity-100'
-                  : 'text-surface-300 dark:text-surface-600 hover:text-surface-400 dark:hover:text-surface-500 opacity-0 group-hover:opacity-100'
-                }
-              `}
-              title={copiedTr ? 'Copied!' : `Copy ${sourceLanguageName}`}
-            >
-              {copiedTr ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
-            </button>
+            <div className="flex items-center gap-1">
+              {currentHistoryItem && (
+                <button
+                  onClick={handleToggleFavorite}
+                  className={`
+                    p-1 rounded transition-all duration-200
+                    ${isFavorited
+                      ? 'text-warning opacity-100'
+                      : 'text-surface-300 dark:text-surface-600 hover:text-warning opacity-0 group-hover:opacity-100'
+                    }
+                  `}
+                  title={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                >
+                  {isFavorited ? <StarFilledIcon size={12} /> : <StarIcon size={12} />}
+                </button>
+              )}
+              <button
+                onClick={handleCopySource}
+                className={`
+                  p-1 rounded transition-all duration-200
+                  ${copiedTr
+                    ? 'text-success opacity-100'
+                    : 'text-surface-300 dark:text-surface-600 hover:text-surface-400 dark:hover:text-surface-500 opacity-0 group-hover:opacity-100'
+                  }
+                `}
+                title={copiedTr ? 'Copied!' : `Copy ${sourceLanguageName}`}
+              >
+                {copiedTr ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
+              </button>
+            </div>
           </div>
           <p className="text-surface-600 dark:text-surface-300 text-sm leading-relaxed">{turkish}</p>
         </div>
