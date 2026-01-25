@@ -46,6 +46,7 @@ export default function Settings({ onBack }: SettingsProps) {
   const [showCreateFormat, setShowCreateFormat] = useState(false);
   const [newFormat, setNewFormat] = useState<NewOutputFormat>(emptyFormat);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [showIconPicker, setShowIconPicker] = useState(false);
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -413,25 +414,38 @@ export default function Settings({ onBack }: SettingsProps) {
                 <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">
                   Icon
                 </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {EMOJI_OPTIONS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => setNewFormat({ ...newFormat, icon: emoji })}
-                      className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all ${
-                        newFormat.icon === emoji
-                          ? 'bg-accent-500 ring-2 ring-accent-400 ring-offset-1 ring-offset-surface-100 dark:ring-offset-surface-800'
-                          : 'bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 hover:border-accent-400 dark:hover:border-accent-500'
-                      }`}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowIconPicker(!showIconPicker)}
+                    className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 rounded-lg hover:border-accent-400 dark:hover:border-accent-500 transition-colors"
+                  >
+                    <span className="text-xl">{newFormat.icon}</span>
+                    <span className="text-xs text-surface-400">Click to change</span>
+                  </button>
+
+                  {showIconPicker && (
+                    <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 rounded-lg shadow-lg z-10">
+                      <div className="grid grid-cols-6 gap-1">
+                        {EMOJI_OPTIONS.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => {
+                              setNewFormat({ ...newFormat, icon: emoji });
+                              setShowIconPicker(false);
+                            }}
+                            className={`w-8 h-8 rounded-md text-lg flex items-center justify-center transition-all hover:bg-surface-100 dark:hover:bg-surface-600 ${
+                              newFormat.icon === emoji ? 'bg-accent-100 dark:bg-accent-900/30' : ''
+                            }`}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <p className="text-[10px] text-surface-400 dark:text-surface-500 mt-1.5">
-                  This icon will show in the main menu when this format is active
-                </p>
               </div>
 
               <div>
