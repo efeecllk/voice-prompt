@@ -15,13 +15,6 @@ We take all security reports seriously and will respond promptly.
 
 ## Security Considerations
 
-### API Key Storage
-
-Your OpenAI API key is stored locally on your device using the system's secure storage:
-- **macOS**: Keychain
-- **Windows**: Credential Manager
-
-The API key is never transmitted anywhere except directly to OpenAI's API.
 
 ### Data Privacy
 
