@@ -15,16 +15,6 @@ A lightweight cross-platform app that converts speech to text and processes it w
 
 ---
 
-## What's New in v0.2.0
-
-- **Windows Support** - Full Windows 10+ support with native installer
-- **Intel Mac Support** - Now works on both Apple Silicon and Intel Macs
-- **Custom Output Formats** - Create your own AI processing templates with voice
-- **My Prompts Library** - Save and organize your favorite outputs
-- **Favorites System** - Star important translations for quick access
-
----
-
 ## Installation
 
 ### macOS (Recommended)
@@ -286,6 +276,16 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+---
+
+## What's New in v0.2.0
+
+- **Windows Support** - Full Windows 10+ support with native installer
+- **Intel Mac Support** - Now works on both Apple Silicon and Intel Macs
+- **Custom Output Formats** - Create your own AI processing templates with voice
+- **My Prompts Library** - Save and organize your favorite outputs
+- **Favorites System** - Star important translations for quick access
 
 ---
 
