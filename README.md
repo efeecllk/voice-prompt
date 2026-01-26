@@ -2,6 +2,8 @@
 
 A lightweight cross-platform app that converts speech to text and processes it with AI. Perfect for crafting prompts for AI tools like Claude and ChatGPT - speak in your native language, get polished English output ready to use.
 
+![Uploading Screenshot 2026-01-26 at 13.31.22.png…]()
+
 
 ![macOS](https://img.shields.io/badge/macOS-10.15+-blue?logo=apple)
 ![Windows](https://img.shields.io/badge/Windows-10+-0078D6?logo=windows)
