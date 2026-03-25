@@ -264,7 +264,6 @@ struct TerminalInfo {
 
 #[tauri::command]
 fn detect_terminals() -> Vec<TerminalInfo> {
-    eprintln!("[detect_terminals] Scanning for terminals...");
 
     let terminals = [
         ("ghostty", "ghostty", "Ghostty"),
@@ -281,8 +280,6 @@ fn detect_terminals() -> Vec<TerminalInfo> {
                 .output()
                 .map(|output| output.status.success())
                 .unwrap_or(false);
-
-            eprintln!("[detect_terminals] {} ({}): running={}", name, id, running);
 
             TerminalInfo {
                 id: id.to_string(),
@@ -311,7 +308,6 @@ fn activate_target_app(app_name: &str) -> Result<(), String> {
         }
 
         let count: usize = msg_send![running_apps, count];
-        eprintln!("[activate_target_app] Searching {} running applications for '{}'", count, app_name);
 
         for i in 0..count {
             let app: *mut Object = msg_send![running_apps, objectAtIndex: i];
@@ -333,26 +329,21 @@ fn activate_target_app(app_name: &str) -> Result<(), String> {
                 .unwrap_or("");
 
             if name == app_name {
-                eprintln!("[activate_target_app] Found app '{}', activating...", name);
-
                 // NSApplicationActivateIgnoringOtherApps = 1 << 1 = 2
                 let options: usize = 1 << 1;
-                let success: BOOL = msg_send![app, activateWithOptions: options];
-                eprintln!("[activate_target_app] activateWithOptions returned: {}", success == YES);
+                let _: BOOL = msg_send![app, activateWithOptions: options];
 
                 // Wait for the app to become frontmost (up to 2s)
                 for attempt in 0..40 {
                     std::thread::sleep(std::time::Duration::from_millis(50));
                     let is_active: BOOL = msg_send![app, isActive];
                     if is_active == YES {
-                        eprintln!("[activate_target_app] App became active after {}ms", (attempt + 1) * 50);
                         break;
                     }
                 }
 
                 // Extra settle time for the app to be ready for input
                 std::thread::sleep(std::time::Duration::from_millis(100));
-                eprintln!("[activate_target_app] App activation complete");
                 return Ok(());
             }
         }
@@ -383,35 +374,23 @@ fn post_key_event(
 
 #[tauri::command]
 fn send_to_terminal(app_name: String, auto_submit: bool) -> Result<(), String> {
-    eprintln!("[send_to_terminal] app_name='{}', auto_submit={}", app_name, auto_submit);
-
     #[cfg(target_os = "macos")]
     {
         use core_graphics::event::{CGEventFlags, KeyCode};
 
-        // Virtual keycode for 'V' on macOS (layout-independent)
         const KEY_V: u16 = 0x09;
 
-        // Step 1: Activate the target application via NSWorkspace/NSRunningApplication
-        eprintln!("[send_to_terminal] Activating app '{}'...", app_name);
         activate_target_app(&app_name)?;
 
-        // Step 2: Post Cmd+V (paste) keystroke via CGEvent
-        eprintln!("[send_to_terminal] Posting Cmd+V keystroke...");
         post_key_event(KEY_V, true, CGEventFlags::CGEventFlagCommand)?;
         post_key_event(KEY_V, false, CGEventFlags::CGEventFlagCommand)?;
-        eprintln!("[send_to_terminal] Cmd+V posted successfully");
 
-        // Step 3: Optionally post Enter keystroke
         if auto_submit {
             std::thread::sleep(std::time::Duration::from_millis(100));
-            eprintln!("[send_to_terminal] Posting Enter keystroke...");
             post_key_event(KeyCode::RETURN, true, CGEventFlags::CGEventFlagNull)?;
             post_key_event(KeyCode::RETURN, false, CGEventFlags::CGEventFlagNull)?;
-            eprintln!("[send_to_terminal] Enter posted successfully");
         }
 
-        eprintln!("[send_to_terminal] Success!");
         Ok(())
     }
 
