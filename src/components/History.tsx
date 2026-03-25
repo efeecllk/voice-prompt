@@ -1,16 +1,19 @@
 import { useState, useRef, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../stores/appStore';
-import { HistoryIcon, CopyIcon, CheckIcon, TrashIcon, StarIcon, StarFilledIcon, FileTextIcon } from './icons';
+import { HistoryIcon, CopyIcon, CheckIcon, TrashIcon, StarIcon, StarFilledIcon, FileTextIcon, SendIcon } from './icons';
 
 type Tab = 'history' | 'favorites';
 
 export default function History() {
-  const { history, clearHistory, toggleFavorite, addCustomPrompt } = useAppStore();
+  const { history, clearHistory, toggleFavorite, addCustomPrompt, targetTerminal } = useAppStore();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [sentId, setSentId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('history');
   const timeoutRef = useRef<number | null>(null);
   const savedTimeoutRef = useRef<number | null>(null);
+  const sentTimeoutRef = useRef<number | null>(null);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -20,6 +23,9 @@ export default function History() {
       }
       if (savedTimeoutRef.current) {
         clearTimeout(savedTimeoutRef.current);
+      }
+      if (sentTimeoutRef.current) {
+        clearTimeout(sentTimeoutRef.current);
       }
     };
   }, []);
@@ -71,6 +77,34 @@ export default function History() {
       setSavedId(null);
       savedTimeoutRef.current = null;
     }, 2000);
+  };
+
+  const handleSendToTerminal = async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+
+      const terminalNames: Record<string, string> = {
+        ghostty: 'Ghostty',
+        warp: 'Warp',
+        terminal: 'Terminal',
+        iterm2: 'iTerm2',
+      };
+
+      const appName = terminalNames[targetTerminal];
+      if (!appName) return;
+
+      await invoke('hide_window');
+      await invoke('send_to_terminal', { appName, autoSubmit: false });
+
+      setSentId(id);
+      if (sentTimeoutRef.current) clearTimeout(sentTimeoutRef.current);
+      sentTimeoutRef.current = window.setTimeout(() => {
+        setSentId(null);
+        sentTimeoutRef.current = null;
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to send to terminal:', err);
+    }
   };
 
   return (
@@ -182,6 +216,22 @@ export default function History() {
                     ) : (
                       <FileTextIcon size={14} />
                     )}
+                  </button>
+                )}
+                {targetTerminal && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSendToTerminal(item.englishText, item.id);
+                    }}
+                    className={`p-1.5 rounded-md transition-all duration-200 flex-shrink-0 mt-0.5 ${
+                      sentId === item.id
+                        ? 'bg-success/10 text-success'
+                        : 'hover:bg-accent-100 dark:hover:bg-accent-800/20 text-accent-400 dark:text-accent-500 opacity-0 group-hover:opacity-100'
+                    }`}
+                    title={sentId === item.id ? 'Sent!' : 'Send to terminal'}
+                  >
+                    {sentId === item.id ? <CheckIcon size={14} /> : <SendIcon size={14} />}
                   </button>
                 )}
                 <button
