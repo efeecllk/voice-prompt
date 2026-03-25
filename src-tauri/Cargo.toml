@@ -1,6 +1,6 @@
 [package]
 name = "voice-prompt"
-version = "0.2.0"
+version = "0.3.0"
 description = "Turkish speech-to-text with English translation"
 authors = ["Efe Celik"]
 edition = "2021"

@@ -86,6 +86,7 @@ brew update && brew upgrade --cask voice-prompt
 | **Favorites** | Star important outputs for quick access |
 | **My Prompts** | Save outputs to your personal prompt library |
 | **One-Click Copy** | Copy any text instantly to clipboard |
+| **Send to Terminal** | Paste prompts directly into Ghostty, Warp, iTerm2, or Terminal.app |
 
 ---
 
@@ -155,7 +156,20 @@ Change in Settings → Global Shortcut. Available options:
 - `Cmd/Ctrl + Shift + .`
 - `Cmd/Ctrl + Option/Alt + V`
 
-### 7. Theme Support
+### 7. Send to Terminal (macOS)
+
+Paste generated prompts directly into your terminal app without manual copy-paste:
+
+1. The app **auto-detects** running terminals (Ghostty, Warp, iTerm2, Terminal.app)
+2. Click the **arrow button** on any result to send it to your terminal
+3. Or enable **Auto-paste** in Settings to send automatically after generation
+4. Optionally enable **Auto-submit** to also press Enter after pasting
+
+**Supported terminals**: Ghostty, Warp, iTerm2, Terminal.app
+
+**Setup**: Grant Accessibility permission on first use (System Settings > Privacy & Security > Accessibility).
+
+### 8. Theme Support
 
 - **System** (default) - Follows your OS appearance
 - **Light** - Always light mode
@@ -267,6 +281,12 @@ Click "More info" → "Run anyway". This appears because the app isn't code-sign
 2. Check System Settings → Privacy & Security → Microphone (macOS)
 3. Check Settings → Privacy → Microphone (Windows)
 
+### Send to Terminal Not Working (macOS)
+
+1. Grant Accessibility permission: System Settings → Privacy & Security → Accessibility → Add Voice Prompt
+2. Restart the app after granting permission
+3. Check that the correct terminal is selected in Settings → Target Terminal
+
 ---
 
 ## License
@@ -278,6 +298,14 @@ MIT License - see [LICENSE](LICENSE) for details.
 Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
+
+## What's New in v0.3.0
+
+- **Send to Terminal** - Paste prompts directly into Ghostty, Warp, iTerm2, or Terminal.app
+- **Auto-paste** - Automatically send generated prompts to your terminal
+- **Auto-submit** - Optionally press Enter after pasting for hands-free workflow
+- **Smart Terminal Detection** - Auto-detects running terminals, prioritizes dev terminals
+- **History Send** - Send any history item directly to your terminal
 
 ## What's New in v0.2.0
 
