@@ -65,6 +65,10 @@ jobs:
             - `.msi` - Windows Installer (recommended)
             - `-setup.exe` - NSIS Installer
 
+            ### Linux
+            - `.deb` - Debian/Ubuntu package
+            - `.AppImage` - Portable (works on most distros)
+
             ## Installation
 
             **macOS:**
@@ -78,5 +82,11 @@ jobs:
             2. Run the installer
             3. Open Voice Prompt from Start Menu
             4. Configure your OpenAI API key in Settings
+
+            **Linux:**
+            1. For `.deb`: `sudo dpkg -i voice-prompt_*.deb`
+            2. For `.AppImage`: `chmod +x Voice_Prompt_*.AppImage && ./Voice_Prompt_*.AppImage`
+            3. Configure your OpenAI API key in Settings
+            4. For "Send to terminal": install `xdotool` (X11) or `wtype` (Wayland)
           releaseDraft: false
           prerelease: false
