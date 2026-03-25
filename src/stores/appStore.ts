@@ -70,6 +70,11 @@ interface AppState {
   shortcut: string;
   theme: 'light' | 'dark' | 'system';
 
+  // Terminal settings
+  targetTerminal: string;
+  autoPaste: boolean;
+  autoSubmit: boolean;
+
   // History
   history: HistoryItem[];
 
@@ -93,6 +98,9 @@ interface AppState {
   setOutputPrompt: (promptId: string) => void;
   setShortcut: (shortcut: string) => void;
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
+  setTargetTerminal: (terminal: string) => void;
+  setAutoPaste: (autoPaste: boolean) => void;
+  setAutoSubmit: (autoSubmit: boolean) => void;
   setRecording: (isRecording: boolean) => void;
   setProcessing: (isProcessing: boolean) => void;
   setResult: (turkish: string, english: string) => void;
@@ -121,6 +129,11 @@ export const useAppStore = create<AppState>()(
       outputPrompt: 'default-translation',
       shortcut: 'CommandOrControl+Shift+Space',
       theme: 'system',
+
+      // Terminal settings
+      targetTerminal: '',
+      autoPaste: false,
+      autoSubmit: false,
 
       // History
       history: [],
@@ -153,6 +166,9 @@ export const useAppStore = create<AppState>()(
       setOutputPrompt: (outputPrompt) => set({ outputPrompt }),
       setShortcut: (shortcut) => set({ shortcut }),
       setTheme: (theme) => set({ theme }),
+      setTargetTerminal: (targetTerminal) => set({ targetTerminal }),
+      setAutoPaste: (autoPaste) => set({ autoPaste }),
+      setAutoSubmit: (autoSubmit) => set({ autoSubmit }),
       setRecording: (isRecording) => set({ isRecording }),
       setProcessing: (isProcessing) => set({ isProcessing }),
       setResult: (currentTurkish, currentEnglish) =>
@@ -241,6 +257,9 @@ export const useAppStore = create<AppState>()(
         outputPrompt: state.outputPrompt,
         shortcut: state.shortcut,
         theme: state.theme,
+        targetTerminal: state.targetTerminal,
+        autoPaste: state.autoPaste,
+        autoSubmit: state.autoSubmit,
         history: state.history,
         customPrompts: state.customPrompts,
         customOutputFormats: state.customOutputFormats,
