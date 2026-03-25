@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { open } from '@tauri-apps/plugin-shell';
+import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../stores/appStore';
-import { BackIcon, EyeIcon, EyeOffIcon, LockIcon, PlusIcon, ChevronIcon, TrashIcon, MicrophoneIcon, StopIcon, SpinnerIcon } from './icons';
+import { BackIcon, EyeIcon, EyeOffIcon, LockIcon, PlusIcon, ChevronIcon, TrashIcon, MicrophoneIcon, StopIcon, SpinnerIcon, TerminalIcon } from './icons';
 import LanguageSelect from './LanguageSelect';
 import PromptSelect from './PromptSelect';
 import { transcribeAudio, generateOutputFormatFromVoice } from '../lib/openai';
@@ -37,7 +38,7 @@ const emptyFormat: EditingOutputFormat = {
 const EMOJI_OPTIONS = ['✨', '🚀', '💡', '🎯', '📝', '🔧', '🎨', '⚡', '🌟', '💬', '📊', '🔍'];
 
 export default function Settings({ onBack }: SettingsProps) {
-  const { apiKey, sourceLanguage, outputPrompt, shortcut, theme, customOutputFormats, setApiKey, setSourceLanguage, setOutputPrompt, setShortcut, setTheme, addCustomOutputFormat, updateCustomOutputFormat, deleteCustomOutputFormat } = useAppStore();
+  const { apiKey, sourceLanguage, outputPrompt, shortcut, theme, customOutputFormats, targetTerminal, autoPaste, autoSubmit, setApiKey, setSourceLanguage, setOutputPrompt, setShortcut, setTheme, addCustomOutputFormat, updateCustomOutputFormat, deleteCustomOutputFormat, setTargetTerminal, setAutoPaste, setAutoSubmit } = useAppStore();
   const [localApiKey, setLocalApiKey] = useState(apiKey);
   const [localLanguage, setLocalLanguage] = useState(sourceLanguage);
   const [localPrompt, setLocalPrompt] = useState(outputPrompt);
@@ -55,6 +56,25 @@ export default function Settings({ onBack }: SettingsProps) {
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  // Terminal detection state
+  const [detectedTerminals, setDetectedTerminals] = useState<Array<{id: string, name: string, running: boolean}>>([]);
+
+  useEffect(() => {
+    invoke<Array<{id: string, name: string, running: boolean}>>('detect_terminals')
+      .then((terminals) => {
+        setDetectedTerminals(terminals);
+        // Auto-select first running terminal if none selected or current selection isn't running
+        const currentRunning = terminals.find(t => t.id === targetTerminal && t.running);
+        if (!targetTerminal || !currentRunning) {
+          const firstRunning = terminals.find(t => t.running);
+          if (firstRunning) {
+            setTargetTerminal(firstRunning.id);
+          }
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -509,6 +529,90 @@ Use {sourceLang} as a placeholder for the source language."
                 </p>
               </div>
 
+            </div>
+          )}
+        </div>
+
+        {/* Send to Terminal */}
+        <div className="border-t border-surface-200 dark:border-surface-700 pt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <TerminalIcon size={16} className="text-surface-500 dark:text-surface-400" />
+            <label className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wider">
+              Send to Terminal
+            </label>
+          </div>
+
+          {/* Target Terminal */}
+          <div className="mb-4">
+            <label className="block text-xs text-surface-500 dark:text-surface-400 mb-1.5">
+              Target Terminal
+            </label>
+            <select
+              value={targetTerminal}
+              onChange={(e) => setTargetTerminal(e.target.value)}
+              className="w-full px-3 py-2.5 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg text-sm text-surface-800 dark:text-surface-200 focus:outline-none focus:ring-2 focus:ring-accent-400/50 focus:border-accent-400"
+            >
+              <option value="">None (disabled)</option>
+              {detectedTerminals.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} {t.running ? '● Running' : '○ Not running'}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-xs text-surface-400 dark:text-surface-500">
+              Paste generated prompts directly into your terminal
+            </p>
+          </div>
+
+          {/* Auto-paste toggle */}
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-sm text-surface-700 dark:text-surface-200">Auto-paste</p>
+              <p className="text-xs text-surface-400 dark:text-surface-500">
+                Automatically paste after generation
+              </p>
+            </div>
+            <button
+              onClick={() => setAutoPaste(!autoPaste)}
+              className={`
+                relative w-10 h-6 rounded-full transition-colors duration-200
+                ${autoPaste
+                  ? 'bg-accent-500'
+                  : 'bg-surface-300 dark:bg-surface-600'
+                }
+              `}
+            >
+              <span className={`
+                absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200
+                ${autoPaste ? 'translate-x-4' : 'translate-x-0'}
+              `} />
+            </button>
+          </div>
+
+          {/* Auto-submit toggle - only visible when auto-paste is ON */}
+          {autoPaste && (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-surface-700 dark:text-surface-200">Auto-submit</p>
+                <p className="text-xs text-surface-400 dark:text-surface-500">
+                  Press Enter after pasting (use with caution)
+                </p>
+              </div>
+              <button
+                onClick={() => setAutoSubmit(!autoSubmit)}
+                className={`
+                  relative w-10 h-6 rounded-full transition-colors duration-200
+                  ${autoSubmit
+                    ? 'bg-warning'
+                    : 'bg-surface-300 dark:bg-surface-600'
+                  }
+                `}
+              >
+                <span className={`
+                  absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200
+                  ${autoSubmit ? 'translate-x-4' : 'translate-x-0'}
+                `} />
+              </button>
             </div>
           )}
         </div>
