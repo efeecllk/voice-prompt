@@ -57,6 +57,15 @@
         "startMenuFolder": "Voice Prompt",
         "minimumWebview2Version": "110.0.1531.0"
       }
+    },
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0", "libappindicator3-1"],
+        "recommends": ["xdotool", "wtype"]
+      },
+      "appimage": {
+        "bundleMediaFramework": true
+      }
     }
   }
 }
