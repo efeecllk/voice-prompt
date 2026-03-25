@@ -469,6 +469,50 @@ export function AppLogoIcon({ size = 24, ...props }: IconProps) {
   );
 }
 
+/**
+ * Terminal Icon - Console/terminal prompt
+ */
+export function TerminalIcon({ size = 24, ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <polyline points="4 17 10 11 4 5" />
+      <line x1="12" y1="19" x2="20" y2="19" />
+    </svg>
+  );
+}
+
+/**
+ * Send Icon - Arrow pointing right for "send to terminal"
+ */
+export function SendIcon({ size = 24, ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M5 12h14" />
+      <path d="m12 5 7 7-7 7" />
+    </svg>
+  );
+}
+
 // Export all icons
 export const Icons = {
   Chevron: ChevronIcon,
@@ -491,6 +535,8 @@ export const Icons = {
   Plus: PlusIcon,
   Edit: EditIcon,
   AppLogo: AppLogoIcon,
+  Terminal: TerminalIcon,
+  Send: SendIcon,
 };
 
 export default Icons;
