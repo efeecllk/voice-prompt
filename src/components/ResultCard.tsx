@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { CopyIcon, CheckIcon, StarIcon, StarFilledIcon } from './icons';
+import { invoke } from '@tauri-apps/api/core';
+import { CopyIcon, CheckIcon, StarIcon, StarFilledIcon, SendIcon } from './icons';
 import { useAppStore, SUPPORTED_LANGUAGES } from '../stores/appStore';
 
 interface ResultCardProps {
@@ -10,9 +11,12 @@ interface ResultCardProps {
 export default function ResultCard({ turkish, english }: ResultCardProps) {
   const [copiedTr, setCopiedTr] = useState(false);
   const [copiedEn, setCopiedEn] = useState(false);
-  const { sourceLanguage, history, toggleFavorite } = useAppStore();
+  const { sourceLanguage, history, toggleFavorite, targetTerminal } = useAppStore();
+  const [sentToTerminal, setSentToTerminal] = useState(false);
+  const [terminalError, setTerminalError] = useState<string | null>(null);
   const sourceTimeoutRef = useRef<number | null>(null);
   const englishTimeoutRef = useRef<number | null>(null);
+  const terminalTimeoutRef = useRef<number | null>(null);
 
   // Find if current result is in history and favorited
   const currentHistoryItem = useMemo(() => {
@@ -34,6 +38,7 @@ export default function ResultCard({ turkish, english }: ResultCardProps) {
     return () => {
       if (sourceTimeoutRef.current) clearTimeout(sourceTimeoutRef.current);
       if (englishTimeoutRef.current) clearTimeout(englishTimeoutRef.current);
+      if (terminalTimeoutRef.current) clearTimeout(terminalTimeoutRef.current);
     };
   }, []);
 
@@ -69,6 +74,42 @@ export default function ResultCard({ turkish, english }: ResultCardProps) {
       }, 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleSendToTerminal = async (text: string) => {
+    try {
+      setTerminalError(null);
+      await navigator.clipboard.writeText(text);
+
+      const terminalNames: Record<string, string> = {
+        ghostty: 'Ghostty',
+        warp: 'Warp',
+        terminal: 'Terminal',
+        iterm2: 'iTerm2',
+      };
+
+      const appName = terminalNames[targetTerminal];
+      if (!appName) {
+        setTerminalError('No terminal selected');
+        return;
+      }
+
+      // Hide Voice Prompt window so it doesn't steal focus from the terminal
+      await invoke('hide_window');
+      await invoke('send_to_terminal', { appName, autoSubmit: false });
+
+      setSentToTerminal(true);
+      if (terminalTimeoutRef.current) clearTimeout(terminalTimeoutRef.current);
+      terminalTimeoutRef.current = window.setTimeout(() => {
+        setSentToTerminal(false);
+        terminalTimeoutRef.current = null;
+      }, 2000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('Failed to send to terminal:', message);
+      setTerminalError(message);
+      setTimeout(() => setTerminalError(null), 5000);
     }
   };
 
@@ -123,25 +164,51 @@ export default function ResultCard({ turkish, english }: ResultCardProps) {
             <span className="text-[10px] tracking-wider text-accent-500 dark:text-accent-400 uppercase font-semibold">
               English
             </span>
-            <button
-              onClick={handleCopyEnglish}
-              className={`
-                p-1.5 rounded-md transition-all duration-200
-                ${copiedEn
-                  ? 'bg-success/10 text-success'
-                  : 'hover:bg-accent-100 dark:hover:bg-accent-800/20 text-accent-400 dark:text-accent-500'
-                }
-              `}
-              title={copiedEn ? 'Copied!' : 'Copy to clipboard'}
-            >
-              {copiedEn ? (
-                <CheckIcon size={14} />
-              ) : (
-                <CopyIcon size={14} />
+            <div className="flex items-center gap-1">
+              {targetTerminal && (
+                <button
+                  onClick={() => handleSendToTerminal(english)}
+                  className={`
+                    p-1.5 rounded-md transition-all duration-200
+                    ${sentToTerminal
+                      ? 'bg-success/10 text-success'
+                      : 'hover:bg-accent-100 dark:hover:bg-accent-800/20 text-accent-400 dark:text-accent-500'
+                    }
+                  `}
+                  title={sentToTerminal ? 'Sent!' : 'Send to terminal'}
+                >
+                  {sentToTerminal ? (
+                    <CheckIcon size={14} />
+                  ) : (
+                    <SendIcon size={14} />
+                  )}
+                </button>
               )}
-            </button>
+              <button
+                onClick={handleCopyEnglish}
+                className={`
+                  p-1.5 rounded-md transition-all duration-200
+                  ${copiedEn
+                    ? 'bg-success/10 text-success'
+                    : 'hover:bg-accent-100 dark:hover:bg-accent-800/20 text-accent-400 dark:text-accent-500'
+                  }
+                `}
+                title={copiedEn ? 'Copied!' : 'Copy to clipboard'}
+              >
+                {copiedEn ? (
+                  <CheckIcon size={14} />
+                ) : (
+                  <CopyIcon size={14} />
+                )}
+              </button>
+            </div>
           </div>
           <p className="text-surface-800 dark:text-surface-100 text-sm leading-relaxed font-medium">{english}</p>
+          {terminalError && (
+            <div className="mt-2 text-xs text-error bg-error/10 rounded px-2 py-1">
+              Terminal: {terminalError}
+            </div>
+          )}
         </div>
       )}
     </div>
