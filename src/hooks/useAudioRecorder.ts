@@ -1,4 +1,5 @@
 import { useRef, useCallback } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../stores/appStore';
 import { transcribeAudio, processWithPrompt, CustomTemplate } from '../lib/openai';
 
@@ -11,6 +12,9 @@ export function useAudioRecorder() {
     sourceLanguage,
     outputPrompt,
     customOutputFormats,
+    targetTerminal,
+    autoPaste,
+    autoSubmit,
     setRecording,
     setProcessing,
     setResult,
@@ -87,6 +91,28 @@ export function useAudioRecorder() {
           // Set results and add to history
           setResult(sourceText, result.text);
           addToHistory(sourceText, result.text);
+
+          // Auto-paste to terminal if enabled
+          if (autoPaste && targetTerminal) {
+            try {
+              await navigator.clipboard.writeText(result.text);
+
+              const terminalNames: Record<string, string> = {
+                ghostty: 'Ghostty',
+                warp: 'Warp',
+                terminal: 'Terminal',
+                iterm2: 'iTerm2',
+              };
+
+              const appName = terminalNames[targetTerminal];
+              if (appName) {
+                await invoke('hide_window');
+                await invoke('send_to_terminal', { appName, autoSubmit });
+              }
+            } catch (err) {
+              console.error('Auto-paste to terminal failed:', err);
+            }
+          }
         } catch (err) {
           const message = err instanceof Error ? err.message : 'An error occurred';
           setError(message);
@@ -103,7 +129,7 @@ export function useAudioRecorder() {
       const message = err instanceof Error ? err.message : 'Failed to access microphone';
       setError(message);
     }
-  }, [apiKey, sourceLanguage, outputPrompt, customOutputFormats, clearCurrent, setRecording, setProcessing, setResult, setError, addToHistory]);
+  }, [apiKey, sourceLanguage, outputPrompt, customOutputFormats, targetTerminal, autoPaste, autoSubmit, clearCurrent, setRecording, setProcessing, setResult, setError, addToHistory]);
 
   const stopRecording = useCallback(() => {
     // Always set recording to false first

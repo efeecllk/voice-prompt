@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import MainView from './components/MainView';
 import { useAppStore } from './stores/appStore';
 import { useGlobalShortcut } from './hooks/useGlobalShortcut';
@@ -9,7 +10,7 @@ const MyPrompts = lazy(() => import('./components/MyPrompts'));
 
 function App() {
   const [view, setView] = useState<'main' | 'settings' | 'my-prompts'>('main');
-  const { theme, loadApiKey } = useAppStore();
+  const { theme, loadApiKey, targetTerminal, setTargetTerminal } = useAppStore();
 
   // Register global shortcut
   useGlobalShortcut();
@@ -18,6 +19,26 @@ function App() {
   useEffect(() => {
     loadApiKey();
   }, [loadApiKey]);
+
+  // Detect terminals on app start and auto-select the best one
+  // Priority: ghostty > warp > iterm2 > terminal (dev terminals first)
+  useEffect(() => {
+    invoke<Array<{id: string, name: string, running: boolean}>>('detect_terminals')
+      .then((terminals) => {
+        const runningTerminals = terminals.filter(t => t.running);
+        if (runningTerminals.length === 0) return;
+
+        // If user manually selected a terminal and it's running, keep it
+        // But if it's "terminal" (default macOS) and a dev terminal is also running, prefer the dev one
+        const devTerminals = runningTerminals.filter(t => t.id !== 'terminal');
+        if (devTerminals.length > 0 && (!targetTerminal || targetTerminal === 'terminal')) {
+          setTargetTerminal(devTerminals[0].id);
+        } else if (!targetTerminal) {
+          setTargetTerminal(runningTerminals[0].id);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   // Apply theme based on preference
   const applyTheme = useCallback((isDark: boolean) => {
