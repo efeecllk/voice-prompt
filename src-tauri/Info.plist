@@ -4,5 +4,7 @@
 <dict>
     <key>NSMicrophoneUsageDescription</key>
     <string>Voice Prompt needs microphone access to record your voice for speech-to-text conversion.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Voice Prompt needs to send keystrokes to your terminal for auto-paste functionality.</string>
 </dict>
 </plist>

@@ -4432,6 +4432,7 @@ name = "voice-prompt"
 version = "0.2.0"
 dependencies = [
  "cocoa",
+ "core-graphics",
  "objc",
  "serde",
  "serde_json",

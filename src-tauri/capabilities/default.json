@@ -8,6 +8,7 @@
     "shell:allow-open",
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister",
-    "store:default"
+    "store:default",
+    "shell:allow-execute"
   ]
 }
