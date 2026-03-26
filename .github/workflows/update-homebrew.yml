@@ -72,7 +72,7 @@ CASK_EOF
 
   url "https://github.com/efeecllk/voice-prompt/releases/download/v#{version}/Voice.Prompt_#{version}_#{arch}.dmg"
   name "Voice Prompt"
-  desc "Lightweight macOS menu bar app for speech-to-text translation"
+  desc "Cross-platform speech-to-text app with English translation"
   homepage "https://github.com/efeecllk/voice-prompt"
 
   depends_on macos: ">= :catalina"
@@ -104,7 +104,7 @@ CASK_EOF
 
   url "https://github.com/efeecllk/voice-prompt/releases/download/v#{version}/Voice.Prompt_#{version}_aarch64.dmg"
   name "Voice Prompt"
-  desc "Lightweight macOS menu bar app for speech-to-text translation"
+  desc "Cross-platform speech-to-text app with English translation"
   homepage "https://github.com/efeecllk/voice-prompt"
 
   depends_on macos: ">= :catalina"
