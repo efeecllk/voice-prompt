@@ -95,7 +95,7 @@ AI-assisted contributions receive equal consideration as traditionally-written c
 
 ## Current Focus Areas
 
-- Cross-platform stability (macOS & Windows)
+- Cross-platform stability (macOS, Windows & Linux)
 - User experience improvements
 - Performance optimization
 - New output format templates

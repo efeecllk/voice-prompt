@@ -8,6 +8,7 @@ A lightweight cross-platform app that converts speech to text and processes it w
 
 ![macOS](https://img.shields.io/badge/macOS-10.15+-blue?logo=apple)
 ![Windows](https://img.shields.io/badge/Windows-10+-0078D6?logo=windows)
+![Linux](https://img.shields.io/badge/Linux-Ubuntu_22.04+-E95420?logo=linux&logoColor=white)
 ![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-M1%2FM2%2FM3-black?logo=apple)
 ![Intel Mac](https://img.shields.io/badge/Intel%20Mac-Supported-gray?logo=apple)
 ![Tauri](https://img.shields.io/badge/Tauri-2.0-orange?logo=tauri)
@@ -44,6 +45,19 @@ Download from [Releases](https://github.com/efeecllk/voice-prompt/releases):
 
 **Note**: You may see a SmartScreen warning on first run. Click "More info" → "Run anyway".
 
+### Linux
+
+Download from [Releases](https://github.com/efeecllk/voice-prompt/releases):
+
+- **`.deb` package** (Ubuntu/Debian):
+  ```bash
+  sudo dpkg -i voice-prompt_*.deb
+  ```
+- **`.AppImage`** (any distro):
+  ```bash
+  chmod +x Voice_Prompt_*.AppImage && ./Voice_Prompt_*.AppImage
+  ```
+
 ### Update
 
 **macOS:**
@@ -51,7 +65,7 @@ Download from [Releases](https://github.com/efeecllk/voice-prompt/releases):
 brew update && brew upgrade --cask voice-prompt
 ```
 
-**Windows:** Download the latest version from [Releases](https://github.com/efeecllk/voice-prompt/releases).
+**Windows/Linux:** Download the latest version from [Releases](https://github.com/efeecllk/voice-prompt/releases).
 
 ---
 
@@ -61,7 +75,7 @@ brew update && brew upgrade --cask voice-prompt
 
 | Feature | Description |
 |---------|-------------|
-| **Menu Bar / System Tray** | Lives in your menu bar (macOS) or system tray (Windows), always one click away |
+| **Menu Bar / System Tray** | Lives in your menu bar (macOS) or system tray (Windows/Linux), always one click away |
 | **Voice Recording** | One-click recording with visual feedback and waveform animation |
 | **Speech-to-Text** | Powered by OpenAI Whisper API - industry-leading accuracy |
 | **Multi-Language** | 20+ source languages including auto-detect |
@@ -156,7 +170,7 @@ Change in Settings → Global Shortcut. Available options:
 - `Cmd/Ctrl + Shift + .`
 - `Cmd/Ctrl + Option/Alt + V`
 
-### 7. Send to Terminal (macOS)
+### 7. Send to Terminal (macOS & Linux)
 
 Paste generated prompts directly into your terminal app without manual copy-paste:
 
@@ -167,7 +181,16 @@ Paste generated prompts directly into your terminal app without manual copy-past
 
 **Supported terminals**: Ghostty, Warp, iTerm2, Terminal.app
 
-**Setup**: Grant Accessibility permission on first use (System Settings > Privacy & Security > Accessibility).
+**macOS setup**: Grant Accessibility permission on first use (System Settings > Privacy & Security > Accessibility).
+
+**Linux setup**: Requires `xdotool` (X11) or `wtype` (Wayland) for keyboard simulation. Install with your package manager:
+```bash
+# X11
+sudo apt install xdotool
+
+# Wayland
+sudo apt install wtype
+```
 
 ### 8. Theme Support
 
@@ -226,6 +249,7 @@ Your OpenAI API key is stored securely on your device.
 - [Rust](https://rustup.rs/) stable
 - **macOS**: Xcode Command Line Tools
 - **Windows**: Visual Studio Build Tools with C++ workload
+- **Linux**: `build-essential`, `libwebkit2gtk-4.1-dev`, `libssl-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`
 
 ### Steps
 
@@ -280,12 +304,19 @@ Click "More info" → "Run anyway". This appears because the app isn't code-sign
 1. Grant microphone permission when prompted
 2. Check System Settings → Privacy & Security → Microphone (macOS)
 3. Check Settings → Privacy → Microphone (Windows)
+4. Check that your audio input device is configured correctly (Linux)
 
 ### Send to Terminal Not Working (macOS)
 
 1. Grant Accessibility permission: System Settings → Privacy & Security → Accessibility → Add Voice Prompt
 2. Restart the app after granting permission
 3. Check that the correct terminal is selected in Settings → Target Terminal
+
+### Send to Terminal Not Working (Linux)
+
+1. Ensure `xdotool` (X11) or `wtype` (Wayland) is installed
+2. Check that the correct terminal is selected in Settings → Target Terminal
+3. Restart the app after installing dependencies
 
 ---
 
