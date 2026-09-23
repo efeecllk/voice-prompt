@@ -29,3 +29,22 @@ pnpm-debug.log*
 .env
 .env.local
 .env.*.local
+
+# Tauri generated schemas
+src-tauri/gen/schemas/
+
+# Signing material: Apple certificates, App Store Connect keys, updater keys.
+# These belong in GitHub secrets (and ~/.tauri), never in the repo.
+*.p12
+*.p8
+*.pem
+*.key
+*.key.pub
+*.cer
+*.certSigningRequest
+*base64*.txt
+.env*
+!.env.example
+
+# Local Claude Code settings
+.claude/settings.local.json

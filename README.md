@@ -8,6 +8,7 @@ A lightweight cross-platform app that converts speech to text and processes it w
 
 ![macOS](https://img.shields.io/badge/macOS-10.15+-blue?logo=apple)
 ![Windows](https://img.shields.io/badge/Windows-10+-0078D6?logo=windows)
+![Linux](https://img.shields.io/badge/Linux-Ubuntu_22.04+-E95420?logo=linux&logoColor=white)
 ![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-M1%2FM2%2FM3-black?logo=apple)
 ![Intel Mac](https://img.shields.io/badge/Intel%20Mac-Supported-gray?logo=apple)
 ![Tauri](https://img.shields.io/badge/Tauri-2.0-orange?logo=tauri)
@@ -34,7 +35,7 @@ Works on both **Apple Silicon** (M1/M2/M3) and **Intel** Macs automatically.
 - Clean uninstall with `brew uninstall`
 - No manual DMG mounting needed
 
-> **Note**: Direct DMG downloads are available in [Releases](https://github.com/efeecllk/voice-prompt/releases) but are not recommended. Use Homebrew instead.
+> **Note**: Signed and notarized DMGs are also available in [Releases](https://github.com/efeecllk/voice-prompt/releases).
 
 ### Windows
 
@@ -44,14 +45,25 @@ Download from [Releases](https://github.com/efeecllk/voice-prompt/releases):
 
 **Note**: You may see a SmartScreen warning on first run. Click "More info" → "Run anyway".
 
+### Linux
+
+Download from [Releases](https://github.com/efeecllk/voice-prompt/releases):
+
+- **`.deb` package** (Ubuntu/Debian):
+  ```bash
+  sudo dpkg -i voice-prompt_*.deb
+  ```
+- **`.AppImage`** (any distro):
+  ```bash
+  chmod +x Voice_Prompt_*.AppImage && ./Voice_Prompt_*.AppImage
+  ```
+
 ### Update
 
-**macOS:**
-```bash
-brew update && brew upgrade --cask voice-prompt
-```
+Voice Prompt checks for a new version on launch and offers **Update & restart**. Updates are
+signed, and the app verifies the signature before installing.
 
-**Windows:** Download the latest version from [Releases](https://github.com/efeecllk/voice-prompt/releases).
+Homebrew users can also run `brew upgrade --cask voice-prompt`.
 
 ---
 
@@ -61,12 +73,14 @@ brew update && brew upgrade --cask voice-prompt
 
 | Feature | Description |
 |---------|-------------|
-| **Menu Bar / System Tray** | Lives in your menu bar (macOS) or system tray (Windows), always one click away |
+| **Menu Bar / System Tray** | Lives in your menu bar (macOS) or system tray (Windows/Linux), always one click away |
 | **Voice Recording** | One-click recording with visual feedback and waveform animation |
-| **Speech-to-Text** | Powered by OpenAI Whisper API - industry-leading accuracy |
+| **Speech-to-Text** | Powered by OpenAI gpt-transcribe - industry-leading accuracy |
 | **Multi-Language** | 20+ source languages including auto-detect |
-| **Global Shortcut** | Trigger recording from any app (default: `Cmd/Ctrl + Shift + Space`) |
+| **Global Shortcut** | Press once to start recording from any app, again to stop (default: `Cmd/Ctrl + Shift + Space`) |
 | **Dark Mode** | Follows your system theme automatically |
+| **Guided Setup** | First launch walks through the API key, microphone and Accessibility permissions, and launch at login |
+| **Auto-Update** | Checks for new versions on launch and installs signed updates in one click |
 
 ### Output Formats
 
@@ -143,7 +157,7 @@ Save and organize your favorite outputs:
 
 ### 6. Global Shortcut
 
-Trigger Voice Prompt from any application:
+Start recording from any application — press once to record, press again to stop and translate:
 
 | Shortcut | Platform |
 |----------|----------|
@@ -156,7 +170,7 @@ Change in Settings → Global Shortcut. Available options:
 - `Cmd/Ctrl + Shift + .`
 - `Cmd/Ctrl + Option/Alt + V`
 
-### 7. Send to Terminal (macOS)
+### 7. Send to Terminal (macOS & Linux)
 
 Paste generated prompts directly into your terminal app without manual copy-paste:
 
@@ -167,7 +181,16 @@ Paste generated prompts directly into your terminal app without manual copy-past
 
 **Supported terminals**: Ghostty, Warp, iTerm2, Terminal.app
 
-**Setup**: Grant Accessibility permission on first use (System Settings > Privacy & Security > Accessibility).
+**macOS setup**: Grant Accessibility permission on first use (System Settings > Privacy & Security > Accessibility).
+
+**Linux setup**: Requires `xdotool` (X11) or `wtype` (Wayland) for keyboard simulation. Install with your package manager:
+```bash
+# X11
+sudo apt install xdotool
+
+# Wayland
+sudo apt install wtype
+```
 
 ### 8. Theme Support
 
@@ -210,7 +233,7 @@ Your OpenAI API key is stored securely on your device.
 
 | Service | Cost |
 |---------|------|
-| Whisper (Speech-to-Text) | ~$0.006/minute |
+| gpt-transcribe (Speech-to-Text) | ~$0.0045/minute |
 | GPT-4.1-nano (Processing) | ~$0.0001/request |
 
 **Estimated**: ~$0.05/day for 50 translations
@@ -226,6 +249,7 @@ Your OpenAI API key is stored securely on your device.
 - [Rust](https://rustup.rs/) stable
 - **macOS**: Xcode Command Line Tools
 - **Windows**: Visual Studio Build Tools with C++ workload
+- **Linux**: `build-essential`, `libwebkit2gtk-4.1-dev`, `libssl-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`
 
 ### Steps
 
@@ -252,18 +276,12 @@ pnpm tauri build
 | Frontend | React 18 + TypeScript |
 | Styling | Tailwind CSS |
 | State | Zustand |
-| Speech-to-Text | OpenAI Whisper |
+| Speech-to-Text | OpenAI gpt-transcribe |
 | Text Processing | OpenAI GPT-4.1-nano |
 
 ---
 
 ## Troubleshooting
-
-### macOS: "App is damaged" or "Cannot be opened"
-
-```bash
-xattr -cr /Applications/Voice\ Prompt.app
-```
 
 ### Windows: SmartScreen Warning
 
@@ -280,12 +298,18 @@ Click "More info" → "Run anyway". This appears because the app isn't code-sign
 1. Grant microphone permission when prompted
 2. Check System Settings → Privacy & Security → Microphone (macOS)
 3. Check Settings → Privacy → Microphone (Windows)
+4. Check that your audio input device is configured correctly (Linux)
 
 ### Send to Terminal Not Working (macOS)
 
-1. Grant Accessibility permission: System Settings → Privacy & Security → Accessibility → Add Voice Prompt
-2. Restart the app after granting permission
-3. Check that the correct terminal is selected in Settings → Target Terminal
+1. Grant Accessibility permission. Settings shows an **Allow Accessibility** button while it is missing; or enable Voice Prompt under System Settings → Privacy & Security → Accessibility
+2. Check that the correct terminal is selected in Settings → Target Terminal
+
+### Send to Terminal Not Working (Linux)
+
+1. Ensure `xdotool` (X11) or `wtype` (Wayland) is installed
+2. Check that the correct terminal is selected in Settings → Target Terminal
+3. Restart the app after installing dependencies
 
 ---
 
@@ -299,21 +323,9 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
-## What's New in v0.3.0
+## Changelog
 
-- **Send to Terminal** - Paste prompts directly into Ghostty, Warp, iTerm2, or Terminal.app
-- **Auto-paste** - Automatically send generated prompts to your terminal
-- **Auto-submit** - Optionally press Enter after pasting for hands-free workflow
-- **Smart Terminal Detection** - Auto-detects running terminals, prioritizes dev terminals
-- **History Send** - Send any history item directly to your terminal
-
-## What's New in v0.2.0
-
-- **Windows Support** - Full Windows 10+ support with native installer
-- **Intel Mac Support** - Now works on both Apple Silicon and Intel Macs
-- **Custom Output Formats** - Create your own AI processing templates with voice
-- **My Prompts Library** - Save and organize your favorite outputs
-- **Favorites System** - Star important translations for quick access
+See [CHANGELOG.md](CHANGELOG.md) or the [Releases](https://github.com/efeecllk/voice-prompt/releases) page.
 
 ---
 

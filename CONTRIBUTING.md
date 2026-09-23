@@ -64,10 +64,19 @@ pnpm tauri build
 ## Pull Request Guidelines
 
 1. **Test locally** - Ensure your changes work on your platform
-2. **Run linting** - Execute `pnpm lint` before submitting
+2. **Check the build** - `pnpm build`, and `cargo clippy` in `src-tauri/` for Rust changes (CI runs both on macOS, Windows and Linux)
 3. **Keep PRs focused** - One issue/feature per PR
 4. **Write clear descriptions** - Explain what changed and why
 5. **Update documentation** - If your change affects user-facing features
+6. **Use [Conventional Commits](https://www.conventionalcommits.org/)** - `feat:`, `fix:`, `docs:`, `refactor:`, `ci:`, `chore:`
+
+## Releases
+
+Releases are automated with [release-please](https://github.com/googleapis/release-please).
+Every merge to `main` updates a release PR that bumps the version and writes the changelog
+from commit messages (`feat` bumps minor, `fix` bumps patch). Merging that PR builds, signs
+and publishes every platform and updates the Homebrew tap. Don't bump versions or push tags
+by hand.
 
 ## Tech Stack
 
@@ -80,7 +89,7 @@ Understanding the stack helps with contributions:
 | Styling | Tailwind CSS |
 | State | Zustand |
 | Backend | Rust |
-| APIs | OpenAI Whisper & GPT |
+| APIs | OpenAI gpt-transcribe & GPT |
 
 ## AI-Generated Code Policy
 
@@ -95,7 +104,7 @@ AI-assisted contributions receive equal consideration as traditionally-written c
 
 ## Current Focus Areas
 
-- Cross-platform stability (macOS & Windows)
+- Cross-platform stability (macOS, Windows & Linux)
 - User experience improvements
 - Performance optimization
 - New output format templates

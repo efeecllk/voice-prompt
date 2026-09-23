@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import MainView from './components/MainView';
+import Onboarding from './components/Onboarding';
+import UpdateBanner from './components/UpdateBanner';
 import { useAppStore } from './stores/appStore';
 import { useGlobalShortcut } from './hooks/useGlobalShortcut';
 
@@ -10,7 +12,9 @@ const MyPrompts = lazy(() => import('./components/MyPrompts'));
 
 function App() {
   const [view, setView] = useState<'main' | 'settings' | 'my-prompts'>('main');
-  const { theme, loadApiKey, targetTerminal, setTargetTerminal } = useAppStore();
+  const { theme, apiKey, apiKeyLoaded, loadApiKey, onboardingDone, setOnboardingDone, targetTerminal, setTargetTerminal } = useAppStore();
+  // Decided once the key has loaded, so saving the key mid-onboarding doesn't end it early
+  const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
 
   // Register global shortcut
   useGlobalShortcut();
@@ -19,6 +23,13 @@ function App() {
   useEffect(() => {
     loadApiKey();
   }, [loadApiKey]);
+
+  // First run only; users who already saved a key skip it
+  useEffect(() => {
+    if (apiKeyLoaded && showOnboarding === null) {
+      setShowOnboarding(!onboardingDone && !apiKey);
+    }
+  }, [apiKeyLoaded, showOnboarding, onboardingDone, apiKey]);
 
   // Detect terminals on app start and auto-select the best one
   // Priority: ghostty > warp > iterm2 > terminal (dev terminals first)
@@ -65,6 +76,17 @@ function App() {
   }, [theme, applyTheme]);
 
   const renderView = () => {
+    if (showOnboarding) {
+      return (
+        <Onboarding
+          onFinish={() => {
+            setOnboardingDone(true);
+            setShowOnboarding(false);
+          }}
+        />
+      );
+    }
+
     if (view === 'main') {
       return (
         <MainView
@@ -89,8 +111,9 @@ function App() {
   };
 
   return (
-    <div className="h-screen w-screen bg-surface-50 dark:bg-surface-900 text-surface-800 dark:text-surface-100">
-      {renderView()}
+    <div className="h-screen w-screen flex flex-col bg-surface-50 dark:bg-surface-900 text-surface-800 dark:text-surface-100">
+      <UpdateBanner />
+      <div className="flex-1 min-h-0">{renderView()}</div>
     </div>
   );
 }

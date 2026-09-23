@@ -1,11 +1,13 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { open } from '@tauri-apps/plugin-shell';
+import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../stores/appStore';
 import { BackIcon, EyeIcon, EyeOffIcon, LockIcon, PlusIcon, ChevronIcon, TrashIcon, MicrophoneIcon, StopIcon, SpinnerIcon, TerminalIcon } from './icons';
 import LanguageSelect from './LanguageSelect';
 import PromptSelect from './PromptSelect';
 import { transcribeAudio, generateOutputFormatFromVoice } from '../lib/openai';
+import { useMicRecorder } from '../hooks/useMicRecorder';
 
 interface SettingsProps {
   onBack: () => void;
@@ -54,8 +56,6 @@ export default function Settings({ onBack }: SettingsProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
 
   // Terminal detection state
   const [detectedTerminals, setDetectedTerminals] = useState<Array<{id: string, name: string, running: boolean}>>([]);
@@ -140,98 +140,60 @@ export default function Settings({ onBack }: SettingsProps) {
   };
 
   // Voice recording handlers
+  const generateFromAudio = async (audioBlob: Blob) => {
+    setIsGenerating(true);
+
+    try {
+      // Step 1: Transcribe audio
+      const { text: voiceDescription } = await transcribeAudio(
+        audioBlob,
+        localApiKey,
+        localLanguage
+      );
+
+      if (!voiceDescription.trim()) {
+        setVoiceError('Could not transcribe audio. Please try again.');
+        return;
+      }
+
+      // Step 2: Generate output format from voice description
+      const generated = await generateOutputFormatFromVoice(voiceDescription, localApiKey);
+
+      // Step 3: Fill in the form (keep current icon or default)
+      setEditingFormat({
+        name: generated.name,
+        description: generated.description,
+        icon: editingFormat.icon || '✨',
+        systemPrompt: generated.systemPrompt,
+      });
+
+      // Auto-expand the create section if not already
+      setShowCreateFormat(true);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'An error occurred';
+      setVoiceError(message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const mic = useMicRecorder(generateFromAudio, setVoiceError);
+
   const startRecording = async () => {
     if (!localApiKey) {
       setVoiceError('Please add your OpenAI API key first');
       return;
     }
 
-    try {
-      setVoiceError(null);
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus',
-      });
-
-      chunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunksRef.current.push(e.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach((track) => track.stop());
-
-        if (chunksRef.current.length === 0) {
-          setVoiceError('No audio recorded');
-          return;
-        }
-
-        setIsGenerating(true);
-
-        try {
-          const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-
-          // Step 1: Transcribe audio
-          const { text: voiceDescription } = await transcribeAudio(
-            audioBlob,
-            localApiKey,
-            localLanguage
-          );
-
-          if (!voiceDescription.trim()) {
-            setVoiceError('Could not transcribe audio. Please try again.');
-            return;
-          }
-
-          // Step 2: Generate output format from voice description
-          const generated = await generateOutputFormatFromVoice(voiceDescription, localApiKey);
-
-          // Step 3: Fill in the form (keep current icon or default)
-          setEditingFormat({
-            name: generated.name,
-            description: generated.description,
-            icon: editingFormat.icon || '✨',
-            systemPrompt: generated.systemPrompt,
-          });
-
-          // Auto-expand the create section if not already
-          setShowCreateFormat(true);
-        } catch (err) {
-          const message = err instanceof Error ? err.message : 'An error occurred';
-          setVoiceError(message);
-        } finally {
-          setIsGenerating(false);
-        }
-      };
-
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(100);
+    setVoiceError(null);
+    if (await mic.start()) {
       setIsRecording(true);
-    } catch (err) {
-      setIsRecording(false);
-      const message = err instanceof Error ? err.message : 'Failed to access microphone';
-      setVoiceError(message);
     }
   };
 
   const stopRecording = () => {
     setIsRecording(false);
-
-    try {
-      if (mediaRecorderRef.current) {
-        if (mediaRecorderRef.current.state !== 'inactive') {
-          mediaRecorderRef.current.stop();
-        }
-        mediaRecorderRef.current.stream?.getTracks().forEach((track) => track.stop());
-        mediaRecorderRef.current = null;
-      }
-    } catch (err) {
-      console.error('Error stopping recording:', err);
-    }
+    mic.stop();
   };
 
   const handleVoiceRecordToggle = () => {
@@ -239,6 +201,29 @@ export default function Settings({ onBack }: SettingsProps) {
       stopRecording();
     } else {
       startRecording();
+    }
+  };
+
+  // macOS drops pasted keystrokes without Accessibility; re-check when the user comes
+  // back from System Settings
+  const [axGranted, setAxGranted] = useState(true);
+  const [autostart, setAutostart] = useState(false);
+
+  useEffect(() => {
+    const recheck = () =>
+      invoke<boolean>('check_accessibility', { prompt: false }).then(setAxGranted).catch(console.error);
+    recheck();
+    isEnabled().then(setAutostart).catch(console.error);
+    window.addEventListener('focus', recheck);
+    return () => window.removeEventListener('focus', recheck);
+  }, []);
+
+  const toggleAutostart = async () => {
+    try {
+      await (autostart ? disable() : enable());
+      setAutostart(!autostart);
+    } catch (err) {
+      console.error('Failed to change launch at login:', err);
     }
   };
 
@@ -311,7 +296,7 @@ export default function Settings({ onBack }: SettingsProps) {
           <LanguageSelect value={localLanguage} onChange={setLocalLanguage} />
           <p className="mt-1.5 text-xs text-surface-400 dark:text-surface-500">
             {localLanguage === 'auto'
-              ? 'Whisper will automatically detect the language'
+              ? 'The language is detected automatically'
               : 'The language you will speak in'}
           </p>
         </div>
@@ -562,6 +547,17 @@ Use {sourceLang} as a placeholder for the source language."
             <p className="mt-1.5 text-xs text-surface-400 dark:text-surface-500">
               Paste generated prompts directly into your terminal
             </p>
+            {targetTerminal && !axGranted && (
+              <div className="mt-2 bg-warning/10 border border-warning/30 rounded-lg p-3 text-xs text-warning-dark dark:text-warning-light space-y-2">
+                <p>macOS blocks pasting until Voice Prompt is allowed under Privacy & Security → Accessibility.</p>
+                <button
+                  onClick={() => invoke('check_accessibility', { prompt: true })}
+                  className="font-medium underline underline-offset-2"
+                >
+                  Allow Accessibility
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Auto-paste toggle */}
@@ -615,6 +611,29 @@ Use {sourceLang} as a placeholder for the source language."
               </button>
             </div>
           )}
+        </div>
+
+        {/* Launch at login */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-surface-700 dark:text-surface-200">Launch at login</p>
+            <p className="text-xs text-surface-400 dark:text-surface-500">Start Voice Prompt in the menu bar when you log in</p>
+          </div>
+          <button
+            onClick={toggleAutostart}
+            className={`
+              relative w-10 h-6 rounded-full transition-colors duration-200
+              ${autostart
+                ? 'bg-accent-500'
+                : 'bg-surface-300 dark:bg-surface-600'
+              }
+            `}
+          >
+            <span className={`
+              absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200
+              ${autostart ? 'translate-x-4' : 'translate-x-0'}
+            `} />
+          </button>
         </div>
 
         {/* Shortcut */}

@@ -3,6 +3,8 @@ import { register, unregister } from '@tauri-apps/plugin-global-shortcut';
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../stores/appStore';
 
+export const TOGGLE_RECORDING_EVENT = 'voice-prompt:toggle-recording';
+
 export function useGlobalShortcut() {
   const { shortcut } = useAppStore();
 
@@ -13,8 +15,8 @@ export function useGlobalShortcut() {
       try {
         await register(currentShortcut, async (event) => {
           if (event.state === 'Pressed') {
-            // Only show and focus window - user will click to record
             await invoke('show_and_focus_window');
+            window.dispatchEvent(new Event(TOGGLE_RECORDING_EVENT));
           }
         });
         console.log(`Global shortcut registered: ${currentShortcut}`);

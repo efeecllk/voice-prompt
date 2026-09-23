@@ -81,7 +81,3 @@ Success criteria:
 export function getPromptById(id: string): PromptTemplate | undefined {
   return PROMPT_TEMPLATES.find((p) => p.id === id);
 }
-
-export function processPrompt(template: PromptTemplate, sourceLang: string): string {
-  return template.systemPrompt.replace(/{sourceLang}/g, sourceLang);
-}

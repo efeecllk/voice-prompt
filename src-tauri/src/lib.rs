@@ -1,7 +1,7 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, PhysicalPosition,
+    Manager, PhysicalPosition,
 };
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 
@@ -68,6 +68,11 @@ fn configure_windows_window(window: &tauri::WebviewWindow) {
     }
 }
 
+#[cfg(target_os = "linux")]
+fn configure_linux_window(window: &tauri::WebviewWindow) {
+    let _ = window.set_always_on_top(true);
+}
+
 #[cfg(target_os = "windows")]
 fn activate_windows_app(window: &tauri::WebviewWindow) {
     use windows::Win32::Foundation::HWND;
@@ -81,7 +86,7 @@ fn activate_windows_app(window: &tauri::WebviewWindow) {
     }
 }
 
-fn show_window_at_position(_app: &AppHandle, window: &tauri::WebviewWindow, x: f64, y: f64) {
+fn show_window(window: &tauri::WebviewWindow, position: Option<(f64, f64)>) {
     // Configure platform-specific window properties
     #[cfg(target_os = "macos")]
     configure_macos_window(window);
@@ -89,7 +94,12 @@ fn show_window_at_position(_app: &AppHandle, window: &tauri::WebviewWindow, x: f
     #[cfg(target_os = "windows")]
     configure_windows_window(window);
 
-    let _ = window.set_position(PhysicalPosition::new(x as i32, y as i32));
+    #[cfg(target_os = "linux")]
+    configure_linux_window(window);
+
+    if let Some((x, y)) = position {
+        let _ = window.set_position(PhysicalPosition::new(x as i32, y as i32));
+    }
     let _ = window.show();
     let _ = window.set_focus();
 
@@ -106,35 +116,14 @@ fn show_window_at_position(_app: &AppHandle, window: &tauri::WebviewWindow, x: f
     activate_windows_app(window);
 }
 
-fn show_window_at_cursor(app: &AppHandle, window: &tauri::WebviewWindow) {
-    // Get cursor position and show window near it
-    if let Ok(cursor_pos) = window.cursor_position() {
-        let width = 360.0;
-        let x = (cursor_pos.x - width / 2.0).max(0.0);
-        let y = cursor_pos.y + 10.0;
-        show_window_at_position(app, window, x, y);
-    } else {
-        // Fallback: configure and show at default position
-        #[cfg(target_os = "macos")]
-        configure_macos_window(window);
-
-        #[cfg(target_os = "windows")]
-        configure_windows_window(window);
-
-        let _ = window.show();
-        let _ = window.set_focus();
-
-        #[cfg(target_os = "macos")]
-        {
-            unsafe {
-                let ns_app = NSApp();
-                ns_app.activateIgnoringOtherApps_(YES);
-            }
-        }
-
-        #[cfg(target_os = "windows")]
-        activate_windows_app(window);
-    }
+fn show_window_at_cursor(window: &tauri::WebviewWindow) {
+    // Show window near the cursor, or wherever it last was if the cursor is unavailable
+    let width = 360.0;
+    let position = window
+        .cursor_position()
+        .ok()
+        .map(|cursor| ((cursor.x - width / 2.0).max(0.0), cursor.y + 10.0));
+    show_window(window, position);
 }
 
 pub fn run() {
@@ -143,6 +132,12 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .setup(|app| {
             // Create tray menu
             let quit_item = MenuItem::with_id(app, "quit", "Quit Voice Prompt", true, None::<&str>)?;
@@ -203,7 +198,7 @@ pub fn run() {
                                 let width = 360.0;
                                 let x = (position.x - width / 2.0).max(0.0);
                                 let y = position.y + 5.0;
-                                show_window_at_position(&app, &window, x, y);
+                                show_window(&window, Some((x, y)));
                             }
                         }
                     }
@@ -214,9 +209,16 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
+            // On Linux, keep the app visible in taskbar as a fallback
+            // since not all DEs support tray icons (e.g. GNOME without extensions)
+            #[cfg(target_os = "linux")]
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_skip_taskbar(false);
+            }
+
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![show_and_focus_window, hide_window, detect_terminals, send_to_terminal])
+        .invoke_handler(tauri::generate_handler![show_and_focus_window, hide_window, check_accessibility, detect_terminals, send_to_terminal])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 // Prevent default close behavior
@@ -245,14 +247,46 @@ pub fn run() {
 
 // Command to show window from frontend (used by global shortcut)
 #[tauri::command]
-fn show_and_focus_window(app: AppHandle, window: tauri::WebviewWindow) {
-    show_window_at_cursor(&app, &window);
+fn show_and_focus_window(window: tauri::WebviewWindow) {
+    show_window_at_cursor(&window);
 }
 
 // Command to hide window before sending to terminal
 #[tauri::command]
 fn hide_window(window: tauri::WebviewWindow) {
     let _ = window.hide();
+}
+
+// Send-to-terminal posts synthetic keystrokes, which macOS silently drops unless the app
+// has Accessibility permission. With `prompt`, macOS shows its permission dialog and adds
+// the app to the Accessibility list, so the user only has to flip the switch.
+#[tauri::command]
+fn check_accessibility(prompt: bool) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        use core_foundation::base::TCFType;
+        use core_foundation::boolean::CFBoolean;
+        use core_foundation::dictionary::{CFDictionary, CFDictionaryRef};
+        use core_foundation::string::{CFString, CFStringRef};
+
+        #[link(name = "ApplicationServices", kind = "framework")]
+        extern "C" {
+            static kAXTrustedCheckOptionPrompt: CFStringRef;
+            fn AXIsProcessTrustedWithOptions(options: CFDictionaryRef) -> u8;
+        }
+
+        unsafe {
+            let key = CFString::wrap_under_get_rule(kAXTrustedCheckOptionPrompt);
+            let options = CFDictionary::from_CFType_pairs(&[(key, CFBoolean::from(prompt))]);
+            AXIsProcessTrustedWithOptions(options.as_concrete_TypeRef()) != 0
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = prompt;
+        true
+    }
 }
 
 #[derive(serde::Serialize)]
@@ -262,21 +296,44 @@ struct TerminalInfo {
     running: bool,
 }
 
+// (id, process name for pgrep, display name == macOS app name)
+#[cfg(target_os = "macos")]
+const TERMINALS: &[(&str, &str, &str)] = &[
+    ("ghostty", "ghostty", "Ghostty"),
+    ("warp", "Warp", "Warp"),
+    ("terminal", "Terminal", "Terminal"),
+    ("iterm2", "iTerm2", "iTerm2"),
+];
+
+#[cfg(target_os = "linux")]
+const TERMINALS: &[(&str, &str, &str)] = &[
+    ("alacritty", "alacritty", "Alacritty"),
+    ("kitty", "kitty", "Kitty"),
+    ("gnome-terminal", "gnome-terminal-server", "GNOME Terminal"),
+    ("konsole", "konsole", "Konsole"),
+    ("wezterm", "wezterm-gui", "WezTerm"),
+    ("xterm", "xterm", "XTerm"),
+    ("foot", "foot", "Foot"),
+    ("tilix", "tilix", "Tilix"),
+];
+
+#[cfg(target_os = "windows")]
+const TERMINALS: &[(&str, &str, &str)] = &[];
+
 #[tauri::command]
 fn detect_terminals() -> Vec<TerminalInfo> {
+    #[cfg(target_os = "macos")]
+    let pgrep_flags: &[&str] = &["-ix"];
+    #[cfg(not(target_os = "macos"))]
+    let pgrep_flags: &[&str] = &["-x"];
 
-    let terminals = [
-        ("ghostty", "ghostty", "Ghostty"),
-        ("warp", "Warp", "Warp"),
-        ("terminal", "Terminal", "Terminal"),
-        ("iterm2", "iTerm2", "iTerm2"),
-    ];
-
-    terminals
+    TERMINALS
         .iter()
         .map(|(id, process, name)| {
+            let mut args: Vec<&str> = pgrep_flags.to_vec();
+            args.push(process);
             let running = std::process::Command::new("pgrep")
-                .args(["-ix", process])
+                .args(&args)
                 .output()
                 .map(|output| output.status.success())
                 .unwrap_or(false);
@@ -373,14 +430,18 @@ fn post_key_event(
 }
 
 #[tauri::command]
-fn send_to_terminal(app_name: String, auto_submit: bool) -> Result<(), String> {
+fn send_to_terminal(terminal: String, auto_submit: bool) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         use core_graphics::event::{CGEventFlags, KeyCode};
 
         const KEY_V: u16 = 0x09;
 
-        activate_target_app(&app_name)?;
+        let (_, _, app_name) = TERMINALS
+            .iter()
+            .find(|(id, _, _)| *id == terminal)
+            .ok_or_else(|| format!("Unknown terminal '{}'", terminal))?;
+        activate_target_app(app_name)?;
 
         post_key_event(KEY_V, true, CGEventFlags::CGEventFlagCommand)?;
         post_key_event(KEY_V, false, CGEventFlags::CGEventFlagCommand)?;
@@ -394,8 +455,82 @@ fn send_to_terminal(app_name: String, auto_submit: bool) -> Result<(), String> {
         Ok(())
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "linux")]
     {
-        Err("send_to_terminal is only supported on macOS".to_string())
+        let session_type = std::env::var("XDG_SESSION_TYPE").unwrap_or_default();
+
+        if session_type == "wayland" {
+            // On Wayland, use wtype for key simulation
+            let has_wtype = std::process::Command::new("which")
+                .arg("wtype")
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false);
+
+            if !has_wtype {
+                return Err("Send to terminal on Wayland requires 'wtype'. Install it with: sudo apt install wtype".to_string());
+            }
+
+            // Small delay to let the user's terminal regain focus after our window hides
+            std::thread::sleep(std::time::Duration::from_millis(300));
+
+            // Simulate Ctrl+V paste via wtype
+            std::process::Command::new("wtype")
+                .args(["-M", "ctrl", "-P", "v", "-p", "v", "-m", "ctrl"])
+                .output()
+                .map_err(|e| format!("Failed to simulate paste: {}", e))?;
+
+            if auto_submit {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                std::process::Command::new("wtype")
+                    .args(["-P", "Return", "-p", "Return"])
+                    .output()
+                    .map_err(|e| format!("Failed to simulate Enter: {}", e))?;
+            }
+        } else {
+            // On X11, use xdotool for window activation and key simulation
+            let has_xdotool = std::process::Command::new("which")
+                .arg("xdotool")
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false);
+
+            if !has_xdotool {
+                return Err("Send to terminal requires 'xdotool'. Install it with: sudo apt install xdotool".to_string());
+            }
+
+            // Activate the terminal window (window class matching is case-insensitive)
+            let activate = std::process::Command::new("xdotool")
+                .args(["search", "--class", &terminal, "windowactivate"])
+                .output()
+                .map_err(|e| format!("Failed to run xdotool: {}", e))?;
+
+            if !activate.status.success() {
+                return Err(format!("Could not find window for '{}'. Is it running?", terminal));
+            }
+
+            std::thread::sleep(std::time::Duration::from_millis(200));
+
+            // Simulate Ctrl+V paste
+            std::process::Command::new("xdotool")
+                .args(["key", "ctrl+v"])
+                .output()
+                .map_err(|e| format!("Failed to simulate paste: {}", e))?;
+
+            if auto_submit {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                std::process::Command::new("xdotool")
+                    .args(["key", "Return"])
+                    .output()
+                    .map_err(|e| format!("Failed to simulate Enter: {}", e))?;
+            }
+        }
+
+        Ok(())
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    {
+        Err("send_to_terminal is not supported on this platform".to_string())
     }
 }

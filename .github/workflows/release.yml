@@ -1,0 +1,272 @@
+name: Release
+
+# Every push to main updates a release PR (version bump + CHANGELOG, derived from
+# Conventional Commits). Merging that PR creates a draft release and tag; the jobs
+# below build and sign every platform, then publish it.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    outputs:
+      created: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+      id: ${{ steps.release.outputs.id }}
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  build:
+    needs: release-please
+    if: needs.release-please.outputs.created == 'true'
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin
+          - os: windows-latest
+          - os: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libgtk-3-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Uploads installers, updater bundles and their signatures to the draft release,
+      # and merges this platform into its latest.json
+      - name: Build, sign and upload
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Updater signature (all platforms)
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Developer ID signing + notarization (macOS; tauri imports the cert into a temp keychain)
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          releaseId: ${{ needs.release-please.outputs.id }}
+          tagName: ${{ needs.release-please.outputs.tag }}
+          releaseDraft: true
+          # Updater bundles are only built here: they need the private key
+          args: ${{ matrix.args }} --config src-tauri/tauri.updater.conf.json
+
+  publish:
+    needs: [release-please, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+      TAG: ${{ needs.release-please.outputs.tag }}
+    steps:
+      # Build jobs merge into latest.json concurrently; don't ship an updater manifest
+      # that silently lost a platform
+      - name: Check latest.json covers every platform
+        run: |
+          gh release download "$TAG" -R "$REPO" -p latest.json -O latest.json
+          for p in darwin-aarch64 darwin-x86_64 windows-x86_64 linux-x86_64; do
+            jq -e --arg p "$p" '.platforms | keys | any(startswith($p))' latest.json > /dev/null \
+              || { echo "latest.json has no $p entry"; exit 1; }
+          done
+
+      - name: Publish release
+        run: gh release edit "$TAG" -R "$REPO" --draft=false --latest
+
+  update-homebrew:
+    needs: [release-please, publish]
+    runs-on: macos-latest
+    steps:
+      - name: Get release info
+        id: release
+        env:
+          TAG_NAME: ${{ needs.release-please.outputs.tag }}
+        run: |
+          VERSION="${TAG_NAME#v}"  # Remove 'v' prefix
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download DMGs and calculate SHA256
+        id: sha
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          # ARM64 DMG
+          ARM_URL="https://github.com/${REPO}/releases/download/v${VERSION}/Voice.Prompt_${VERSION}_aarch64.dmg"
+          echo "Downloading ARM64 from: $ARM_URL"
+          curl -L -o arm64.dmg "$ARM_URL"
+          ARM_SHA=$(shasum -a 256 arm64.dmg | cut -d' ' -f1)
+          echo "arm_sha=$ARM_SHA" >> $GITHUB_OUTPUT
+          echo "ARM64 SHA256: $ARM_SHA"
+
+          # Intel DMG (x64)
+          INTEL_URL="https://github.com/${REPO}/releases/download/v${VERSION}/Voice.Prompt_${VERSION}_x64.dmg"
+          echo "Downloading Intel from: $INTEL_URL"
+          if curl -L --fail -o intel.dmg "$INTEL_URL"; then
+            INTEL_SHA=$(shasum -a 256 intel.dmg | cut -d' ' -f1)
+            echo "intel_sha=$INTEL_SHA" >> $GITHUB_OUTPUT
+            echo "Intel SHA256: $INTEL_SHA"
+          else
+            echo "Intel DMG not found, will use ARM64 only"
+            echo "intel_sha=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Clone Homebrew tap
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/efeecllk/homebrew-voice-prompt.git"
+
+      - name: Update cask
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          ARM_SHA: ${{ steps.sha.outputs.arm_sha }}
+          INTEL_SHA: ${{ steps.sha.outputs.intel_sha }}
+        run: |
+          cd homebrew-voice-prompt
+
+          if [ -n "$INTEL_SHA" ]; then
+            # Multi-architecture cask
+            cat > Casks/voice-prompt.rb << 'CASK_EOF'
+          cask "voice-prompt" do
+            arch arm: "aarch64", intel: "x64"
+
+          CASK_EOF
+            echo "  version \"$VERSION\"" >> Casks/voice-prompt.rb
+            echo "  sha256 arm:   \"$ARM_SHA\"," >> Casks/voice-prompt.rb
+            echo "         intel: \"$INTEL_SHA\"" >> Casks/voice-prompt.rb
+            cat >> Casks/voice-prompt.rb << 'CASK_EOF'
+
+            url "https://github.com/efeecllk/voice-prompt/releases/download/v#{version}/Voice.Prompt_#{version}_#{arch}.dmg"
+            name "Voice Prompt"
+            desc "Cross-platform speech-to-text app with English translation"
+            homepage "https://github.com/efeecllk/voice-prompt"
+
+            app "Voice Prompt.app"
+
+            caveats <<~EOS
+              Voice Prompt requires an OpenAI API key to function.
+              Get your API key from: https://platform.openai.com/api-keys
+
+              After installation, click the menu bar icon and go to Settings to enter your API key.
+            EOS
+
+            zap trash: [
+              "~/Library/Application Support/com.voiceprompt.app",
+              "~/Library/Caches/com.voiceprompt.app",
+              "~/Library/Preferences/com.voiceprompt.app.plist",
+              "~/Library/Saved Application State/com.voiceprompt.app.savedState",
+            ]
+          end
+          CASK_EOF
+          else
+            # ARM64-only cask (fallback)
+            cat > Casks/voice-prompt.rb << 'CASK_EOF'
+          cask "voice-prompt" do
+          CASK_EOF
+            echo "  version \"$VERSION\"" >> Casks/voice-prompt.rb
+            echo "  sha256 \"$ARM_SHA\"" >> Casks/voice-prompt.rb
+            cat >> Casks/voice-prompt.rb << 'CASK_EOF'
+
+            url "https://github.com/efeecllk/voice-prompt/releases/download/v#{version}/Voice.Prompt_#{version}_aarch64.dmg"
+            name "Voice Prompt"
+            desc "Cross-platform speech-to-text app with English translation"
+            homepage "https://github.com/efeecllk/voice-prompt"
+
+            depends_on arch: :arm64
+
+            app "Voice Prompt.app"
+
+            caveats <<~EOS
+              Voice Prompt requires an OpenAI API key to function.
+              Get your API key from: https://platform.openai.com/api-keys
+
+              After installation, click the menu bar icon and go to Settings to enter your API key.
+            EOS
+
+            zap trash: [
+              "~/Library/Application Support/com.voiceprompt.app",
+              "~/Library/Caches/com.voiceprompt.app",
+              "~/Library/Preferences/com.voiceprompt.app.plist",
+              "~/Library/Saved Application State/com.voiceprompt.app.savedState",
+            ]
+          end
+          CASK_EOF
+          fi
+
+          echo "Updated cask file:"
+          cat Casks/voice-prompt.rb
+
+      - name: Commit and push
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          cd homebrew-voice-prompt
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+          git diff --cached --quiet || git commit -m "Update to v$VERSION"
+          git push
