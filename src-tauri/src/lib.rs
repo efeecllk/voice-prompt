@@ -1,3 +1,5 @@
+mod recorder;
+
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -45,6 +47,33 @@ fn configure_macos_window(window: &tauri::WebviewWindow) {
 
             // Set window level to popup menu level (appears over fullscreen apps)
             let _: () = msg_send![ns_win, setLevel: NS_POPUP_MENU_WINDOW_LEVEL];
+        }
+    }
+}
+
+// The window stays hidden while the global shortcut records, and WebKit suspends the
+// page process of hidden views after a few seconds: the shortcut's JS handler and the
+// transcription requests would not run until the window was shown again. These are
+// private WKPreferences switches, so check they exist before calling them.
+#[cfg(target_os = "macos")]
+fn keep_webview_awake(webview: *mut std::ffi::c_void) {
+    use objc::runtime::{BOOL, NO};
+
+    unsafe {
+        let webview = webview as *mut Object;
+        let config: *mut Object = msg_send![webview, configuration];
+        let prefs: *mut Object = msg_send![config, preferences];
+
+        let suppression = sel!(_setPageVisibilityBasedProcessSuppressionEnabled:);
+        let responds: BOOL = msg_send![prefs, respondsToSelector: suppression];
+        if responds == YES {
+            let _: () = msg_send![prefs, _setPageVisibilityBasedProcessSuppressionEnabled: NO];
+        }
+
+        let throttling = sel!(_setHiddenPageDOMTimerThrottlingEnabled:);
+        let responds: BOOL = msg_send![prefs, respondsToSelector: throttling];
+        if responds == YES {
+            let _: () = msg_send![prefs, _setHiddenPageDOMTimerThrottlingEnabled: NO];
         }
     }
 }
@@ -138,6 +167,7 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
+        .manage(recorder::Recording::default())
         .setup(|app| {
             // Create tray menu
             let quit_item = MenuItem::with_id(app, "quit", "Quit Voice Prompt", true, None::<&str>)?;
@@ -209,6 +239,12 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
+            // Keep the hidden window's page running
+            #[cfg(target_os = "macos")]
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.with_webview(|webview| keep_webview_awake(webview.inner()));
+            }
+
             // On Linux, keep the app visible in taskbar as a fallback
             // since not all DEs support tray icons (e.g. GNOME without extensions)
             #[cfg(target_os = "linux")]
@@ -218,7 +254,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![show_and_focus_window, hide_window, check_accessibility, detect_terminals, send_to_terminal])
+        .invoke_handler(tauri::generate_handler![show_and_focus_window, hide_window, check_accessibility, detect_terminals, send_to_terminal, recorder::start_recording, recorder::stop_recording])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 // Prevent default close behavior
