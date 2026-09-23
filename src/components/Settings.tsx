@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { open } from '@tauri-apps/plugin-shell';
+import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../stores/appStore';
 import { BackIcon, EyeIcon, EyeOffIcon, LockIcon, PlusIcon, ChevronIcon, TrashIcon, MicrophoneIcon, StopIcon, SpinnerIcon, TerminalIcon } from './icons';
@@ -203,6 +204,29 @@ export default function Settings({ onBack }: SettingsProps) {
     }
   };
 
+  // macOS drops pasted keystrokes without Accessibility; re-check when the user comes
+  // back from System Settings
+  const [axGranted, setAxGranted] = useState(true);
+  const [autostart, setAutostart] = useState(false);
+
+  useEffect(() => {
+    const recheck = () =>
+      invoke<boolean>('check_accessibility', { prompt: false }).then(setAxGranted).catch(console.error);
+    recheck();
+    isEnabled().then(setAutostart).catch(console.error);
+    window.addEventListener('focus', recheck);
+    return () => window.removeEventListener('focus', recheck);
+  }, []);
+
+  const toggleAutostart = async () => {
+    try {
+      await (autostart ? disable() : enable());
+      setAutostart(!autostart);
+    } catch (err) {
+      console.error('Failed to change launch at login:', err);
+    }
+  };
+
   const shortcutOptions = [
     { value: 'CommandOrControl+Shift+Space', label: 'Cmd+Shift+Space' },
     { value: 'CommandOrControl+Alt+Space', label: 'Cmd+Option+Space' },
@@ -272,7 +296,7 @@ export default function Settings({ onBack }: SettingsProps) {
           <LanguageSelect value={localLanguage} onChange={setLocalLanguage} />
           <p className="mt-1.5 text-xs text-surface-400 dark:text-surface-500">
             {localLanguage === 'auto'
-              ? 'Whisper will automatically detect the language'
+              ? 'The language is detected automatically'
               : 'The language you will speak in'}
           </p>
         </div>
@@ -523,6 +547,17 @@ Use {sourceLang} as a placeholder for the source language."
             <p className="mt-1.5 text-xs text-surface-400 dark:text-surface-500">
               Paste generated prompts directly into your terminal
             </p>
+            {targetTerminal && !axGranted && (
+              <div className="mt-2 bg-warning/10 border border-warning/30 rounded-lg p-3 text-xs text-warning-dark dark:text-warning-light space-y-2">
+                <p>macOS blocks pasting until Voice Prompt is allowed under Privacy & Security → Accessibility.</p>
+                <button
+                  onClick={() => invoke('check_accessibility', { prompt: true })}
+                  className="font-medium underline underline-offset-2"
+                >
+                  Allow Accessibility
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Auto-paste toggle */}
@@ -576,6 +611,29 @@ Use {sourceLang} as a placeholder for the source language."
               </button>
             </div>
           )}
+        </div>
+
+        {/* Launch at login */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-surface-700 dark:text-surface-200">Launch at login</p>
+            <p className="text-xs text-surface-400 dark:text-surface-500">Start Voice Prompt in the menu bar when you log in</p>
+          </div>
+          <button
+            onClick={toggleAutostart}
+            className={`
+              relative w-10 h-6 rounded-full transition-colors duration-200
+              ${autostart
+                ? 'bg-accent-500'
+                : 'bg-surface-300 dark:bg-surface-600'
+              }
+            `}
+          >
+            <span className={`
+              absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200
+              ${autostart ? 'translate-x-4' : 'translate-x-0'}
+            `} />
+          </button>
         </div>
 
         {/* Shortcut */}

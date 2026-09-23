@@ -132,6 +132,10 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .setup(|app| {
             // Create tray menu
             let quit_item = MenuItem::with_id(app, "quit", "Quit Voice Prompt", true, None::<&str>)?;
@@ -212,7 +216,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![show_and_focus_window, hide_window, detect_terminals, send_to_terminal])
+        .invoke_handler(tauri::generate_handler![show_and_focus_window, hide_window, check_accessibility, detect_terminals, send_to_terminal])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 // Prevent default close behavior
@@ -249,6 +253,38 @@ fn show_and_focus_window(window: tauri::WebviewWindow) {
 #[tauri::command]
 fn hide_window(window: tauri::WebviewWindow) {
     let _ = window.hide();
+}
+
+// Send-to-terminal posts synthetic keystrokes, which macOS silently drops unless the app
+// has Accessibility permission. With `prompt`, macOS shows its permission dialog and adds
+// the app to the Accessibility list, so the user only has to flip the switch.
+#[tauri::command]
+fn check_accessibility(prompt: bool) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        use core_foundation::base::TCFType;
+        use core_foundation::boolean::CFBoolean;
+        use core_foundation::dictionary::{CFDictionary, CFDictionaryRef};
+        use core_foundation::string::{CFString, CFStringRef};
+
+        #[link(name = "ApplicationServices", kind = "framework")]
+        extern "C" {
+            static kAXTrustedCheckOptionPrompt: CFStringRef;
+            fn AXIsProcessTrustedWithOptions(options: CFDictionaryRef) -> u8;
+        }
+
+        unsafe {
+            let key = CFString::wrap_under_get_rule(kAXTrustedCheckOptionPrompt);
+            let options = CFDictionary::from_CFType_pairs(&[(key, CFBoolean::from(prompt))]);
+            AXIsProcessTrustedWithOptions(options.as_concrete_TypeRef()) != 0
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = prompt;
+        true
+    }
 }
 
 #[derive(serde::Serialize)]

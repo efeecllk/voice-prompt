@@ -31,6 +31,14 @@ async function chat(apiKey: string, systemPrompt: string, userContent: string, t
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
 
+// Listing models is free, so it is a cheap way to check a key before saving it
+export async function validateApiKey(apiKey: string): Promise<boolean> {
+  const response = await fetch('https://api.openai.com/v1/models', {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  return response.ok;
+}
+
 export async function transcribeAudio(
   audioBlob: Blob,
   apiKey: string,

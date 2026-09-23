@@ -69,6 +69,7 @@ interface AppState {
   outputPrompt: string;
   shortcut: string;
   theme: 'light' | 'dark' | 'system';
+  onboardingDone: boolean;
 
   // Terminal settings
   targetTerminal: string;
@@ -98,6 +99,7 @@ interface AppState {
   setOutputPrompt: (promptId: string) => void;
   setShortcut: (shortcut: string) => void;
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
+  setOnboardingDone: (onboardingDone: boolean) => void;
   setTargetTerminal: (terminal: string) => void;
   setAutoPaste: (autoPaste: boolean) => void;
   setAutoSubmit: (autoSubmit: boolean) => void;
@@ -129,6 +131,7 @@ export const useAppStore = create<AppState>()(
       outputPrompt: 'default-translation',
       shortcut: 'CommandOrControl+Shift+Space',
       theme: 'system',
+      onboardingDone: false,
 
       // Terminal settings
       targetTerminal: '',
@@ -166,6 +169,7 @@ export const useAppStore = create<AppState>()(
       setOutputPrompt: (outputPrompt) => set({ outputPrompt }),
       setShortcut: (shortcut) => set({ shortcut }),
       setTheme: (theme) => set({ theme }),
+      setOnboardingDone: (onboardingDone) => set({ onboardingDone }),
       setTargetTerminal: (targetTerminal) => set({ targetTerminal }),
       setAutoPaste: (autoPaste) => set({ autoPaste }),
       setAutoSubmit: (autoSubmit) => set({ autoSubmit }),
@@ -257,6 +261,7 @@ export const useAppStore = create<AppState>()(
         outputPrompt: state.outputPrompt,
         shortcut: state.shortcut,
         theme: state.theme,
+        onboardingDone: state.onboardingDone,
         targetTerminal: state.targetTerminal,
         autoPaste: state.autoPaste,
         autoSubmit: state.autoSubmit,
