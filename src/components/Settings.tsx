@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { open } from '@tauri-apps/plugin-shell';
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../stores/appStore';
@@ -6,6 +6,7 @@ import { BackIcon, EyeIcon, EyeOffIcon, LockIcon, PlusIcon, ChevronIcon, TrashIc
 import LanguageSelect from './LanguageSelect';
 import PromptSelect from './PromptSelect';
 import { transcribeAudio, generateOutputFormatFromVoice } from '../lib/openai';
+import { useMicRecorder } from '../hooks/useMicRecorder';
 
 interface SettingsProps {
   onBack: () => void;
@@ -54,8 +55,6 @@ export default function Settings({ onBack }: SettingsProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
 
   // Terminal detection state
   const [detectedTerminals, setDetectedTerminals] = useState<Array<{id: string, name: string, running: boolean}>>([]);
@@ -140,98 +139,60 @@ export default function Settings({ onBack }: SettingsProps) {
   };
 
   // Voice recording handlers
+  const generateFromAudio = async (audioBlob: Blob) => {
+    setIsGenerating(true);
+
+    try {
+      // Step 1: Transcribe audio
+      const { text: voiceDescription } = await transcribeAudio(
+        audioBlob,
+        localApiKey,
+        localLanguage
+      );
+
+      if (!voiceDescription.trim()) {
+        setVoiceError('Could not transcribe audio. Please try again.');
+        return;
+      }
+
+      // Step 2: Generate output format from voice description
+      const generated = await generateOutputFormatFromVoice(voiceDescription, localApiKey);
+
+      // Step 3: Fill in the form (keep current icon or default)
+      setEditingFormat({
+        name: generated.name,
+        description: generated.description,
+        icon: editingFormat.icon || '✨',
+        systemPrompt: generated.systemPrompt,
+      });
+
+      // Auto-expand the create section if not already
+      setShowCreateFormat(true);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'An error occurred';
+      setVoiceError(message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const mic = useMicRecorder(generateFromAudio, setVoiceError);
+
   const startRecording = async () => {
     if (!localApiKey) {
       setVoiceError('Please add your OpenAI API key first');
       return;
     }
 
-    try {
-      setVoiceError(null);
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus',
-      });
-
-      chunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunksRef.current.push(e.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach((track) => track.stop());
-
-        if (chunksRef.current.length === 0) {
-          setVoiceError('No audio recorded');
-          return;
-        }
-
-        setIsGenerating(true);
-
-        try {
-          const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-
-          // Step 1: Transcribe audio
-          const { text: voiceDescription } = await transcribeAudio(
-            audioBlob,
-            localApiKey,
-            localLanguage
-          );
-
-          if (!voiceDescription.trim()) {
-            setVoiceError('Could not transcribe audio. Please try again.');
-            return;
-          }
-
-          // Step 2: Generate output format from voice description
-          const generated = await generateOutputFormatFromVoice(voiceDescription, localApiKey);
-
-          // Step 3: Fill in the form (keep current icon or default)
-          setEditingFormat({
-            name: generated.name,
-            description: generated.description,
-            icon: editingFormat.icon || '✨',
-            systemPrompt: generated.systemPrompt,
-          });
-
-          // Auto-expand the create section if not already
-          setShowCreateFormat(true);
-        } catch (err) {
-          const message = err instanceof Error ? err.message : 'An error occurred';
-          setVoiceError(message);
-        } finally {
-          setIsGenerating(false);
-        }
-      };
-
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(100);
+    setVoiceError(null);
+    if (await mic.start()) {
       setIsRecording(true);
-    } catch (err) {
-      setIsRecording(false);
-      const message = err instanceof Error ? err.message : 'Failed to access microphone';
-      setVoiceError(message);
     }
   };
 
   const stopRecording = () => {
     setIsRecording(false);
-
-    try {
-      if (mediaRecorderRef.current) {
-        if (mediaRecorderRef.current.state !== 'inactive') {
-          mediaRecorderRef.current.stop();
-        }
-        mediaRecorderRef.current.stream?.getTracks().forEach((track) => track.stop());
-        mediaRecorderRef.current = null;
-      }
-    } catch (err) {
-      console.error('Error stopping recording:', err);
-    }
+    mic.stop();
   };
 
   const handleVoiceRecordToggle = () => {

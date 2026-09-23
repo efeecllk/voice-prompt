@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useAppStore, CustomPrompt } from '../stores/appStore';
 import { BackIcon, FileTextIcon, PlusIcon, TrashIcon, CheckIcon, MicrophoneIcon, StopIcon, SpinnerIcon, CopyIcon } from './icons';
 import { transcribeAudio, generatePromptFromVoice } from '../lib/openai';
+import { useMicRecorder } from '../hooks/useMicRecorder';
 
 interface MyPromptsProps {
   onBack: () => void;
@@ -33,8 +34,6 @@ export default function MyPrompts({ onBack }: MyPromptsProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
 
   const copyToClipboard = async (text: string, fieldName: string) => {
     try {
@@ -106,96 +105,57 @@ export default function MyPrompts({ onBack }: MyPromptsProps) {
   };
 
   // Voice recording handlers
+  const generateFromAudio = async (audioBlob: Blob) => {
+    setIsProcessing(true);
+
+    try {
+      // Step 1: Transcribe audio
+      const { text: voiceDescription } = await transcribeAudio(
+        audioBlob,
+        apiKey,
+        sourceLanguage
+      );
+
+      if (!voiceDescription.trim()) {
+        setError('Could not transcribe audio. Please try again.');
+        return;
+      }
+
+      // Step 2: Generate prompt from voice description
+      const generatedPrompt = await generatePromptFromVoice(voiceDescription, apiKey);
+
+      // Step 3: Fill in the form with generated content
+      setEditingPrompt({
+        ...editingPrompt,
+        name: generatedPrompt.name,
+        description: generatedPrompt.description,
+        systemPrompt: generatedPrompt.systemPrompt,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'An error occurred';
+      setError(message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const mic = useMicRecorder(generateFromAudio, setError);
+
   const startRecording = async () => {
     if (!apiKey) {
       setError('Please add your OpenAI API key in Settings');
       return;
     }
 
-    try {
-      setError(null);
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus',
-      });
-
-      chunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunksRef.current.push(e.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        // Stop all tracks
-        stream.getTracks().forEach((track) => track.stop());
-
-        if (chunksRef.current.length === 0) {
-          setError('No audio recorded');
-          return;
-        }
-
-        setIsProcessing(true);
-
-        try {
-          const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-
-          // Step 1: Transcribe audio
-          const { text: voiceDescription } = await transcribeAudio(
-            audioBlob,
-            apiKey,
-            sourceLanguage
-          );
-
-          if (!voiceDescription.trim()) {
-            setError('Could not transcribe audio. Please try again.');
-            return;
-          }
-
-          // Step 2: Generate prompt from voice description
-          const generatedPrompt = await generatePromptFromVoice(voiceDescription, apiKey);
-
-          // Step 3: Fill in the form with generated content
-          setEditingPrompt({
-            ...editingPrompt,
-            name: generatedPrompt.name,
-            description: generatedPrompt.description,
-            systemPrompt: generatedPrompt.systemPrompt,
-          });
-        } catch (err) {
-          const message = err instanceof Error ? err.message : 'An error occurred';
-          setError(message);
-        } finally {
-          setIsProcessing(false);
-        }
-      };
-
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(100);
+    setError(null);
+    if (await mic.start()) {
       setIsRecording(true);
-    } catch (err) {
-      setIsRecording(false);
-      const message = err instanceof Error ? err.message : 'Failed to access microphone';
-      setError(message);
     }
   };
 
   const stopRecording = () => {
     setIsRecording(false);
-
-    try {
-      if (mediaRecorderRef.current) {
-        if (mediaRecorderRef.current.state !== 'inactive') {
-          mediaRecorderRef.current.stop();
-        }
-        mediaRecorderRef.current.stream?.getTracks().forEach((track) => track.stop());
-        mediaRecorderRef.current = null;
-      }
-    } catch (err) {
-      console.error('Error stopping recording:', err);
-    }
+    mic.stop();
   };
 
   const handleRecordToggle = () => {

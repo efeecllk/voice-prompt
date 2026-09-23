@@ -4,6 +4,33 @@ import { getPromptById } from '../prompts';
 const WHISPER_API_URL = 'https://api.openai.com/v1/audio/transcriptions';
 const CHAT_API_URL = 'https://api.openai.com/v1/chat/completions';
 
+async function chat(apiKey: string, systemPrompt: string, userContent: string, temperature: number): Promise<string> {
+  const response = await fetch(CHAT_API_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4.1-nano',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userContent },
+      ],
+      temperature,
+      max_tokens: 2000,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error?.message || `API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content?.trim() || '';
+}
+
 export async function transcribeAudio(
   audioBlob: Blob,
   apiKey: string,
@@ -38,7 +65,7 @@ export async function transcribeAudio(
   };
 }
 
-export function getLanguageName(code: string): string {
+function getLanguageName(code: string): string {
   const lang = SUPPORTED_LANGUAGES.find((l) => l.code === code);
   return lang?.name || code;
 }
@@ -77,55 +104,15 @@ export async function processWithPrompt(
   }
 
   const languageName = getLanguageName(sourceLanguage);
-  // processPrompt expects PromptTemplate, but for custom templates we just need the replacement
   const systemPrompt = template.systemPrompt.replace(/{sourceLang}/g, languageName);
 
-  const response = await fetch(CHAT_API_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4.1-nano',
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-        {
-          role: 'user',
-          content: sourceText,
-        },
-      ],
-      temperature: 0.3,
-      max_tokens: 2000,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error?.message || `API error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  const text = data.choices?.[0]?.message?.content?.trim() || '';
+  const text = await chat(apiKey, systemPrompt, sourceText, 0.3);
 
   return {
     text,
     outputFormat: template.outputFormat || 'text',
     codeBlockLang: template.codeBlockLang,
   };
-}
-
-// Legacy function for backwards compatibility
-export async function translateToEnglish(
-  sourceText: string,
-  apiKey: string,
-  sourceLanguage: string = 'tr'
-): Promise<string> {
-  const result = await processWithPrompt(sourceText, apiKey, sourceLanguage, 'default-translation');
-  return result.text;
 }
 
 export interface GeneratedPrompt {
@@ -164,36 +151,7 @@ Respond ONLY with valid JSON, no markdown or code blocks.
 Example response:
 {"name":"Code Reviewer","description":"Reviews code and provides improvement suggestions","systemPrompt":"You are an expert code reviewer. Analyze the following {sourceLang} code and provide:\\n\\n1. Code quality assessment\\n2. Potential bugs or issues\\n3. Suggestions for improvement\\n4. Best practices recommendations\\n\\nBe constructive and specific in your feedback."}`;
 
-  const response = await fetch(CHAT_API_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4.1-nano',
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-        {
-          role: 'user',
-          content: voiceDescription,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error?.message || `API error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content?.trim() || '';
+  const content = await chat(apiKey, systemPrompt, voiceDescription, 0.7);
 
   try {
     // Parse the JSON response
@@ -268,36 +226,7 @@ Voice: "convert to a git commit message"
 Voice: "create bullet points for presentation"
 {"name":"Presentation Bullets","description":"Converts ideas into presentation bullet points","systemPrompt":"You are a presentation specialist. Transform {sourceLang} input into clear, concise bullet points.\\n\\n## RULES\\n1. Extract key ideas hierarchically\\n2. Keep bullets under 10 words\\n3. Use parallel structure\\n4. Maximum 5-7 main points\\n\\nOnly output the bullet points, nothing else.","outputFormat":"text"}`;
 
-  const response = await fetch(CHAT_API_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4.1-nano',
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-        {
-          role: 'user',
-          content: voiceDescription,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error?.message || `API error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content?.trim() || '';
+  const content = await chat(apiKey, systemPrompt, voiceDescription, 0.7);
 
   try {
     const parsed = JSON.parse(content);

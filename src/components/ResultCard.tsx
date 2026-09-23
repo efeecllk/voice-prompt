@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { CopyIcon, CheckIcon, StarIcon, StarFilledIcon, SendIcon } from './icons';
 import { useAppStore, SUPPORTED_LANGUAGES } from '../stores/appStore';
+import { sendToTerminal } from '../lib/terminal';
 
 interface ResultCardProps {
   turkish: string;
@@ -80,24 +80,7 @@ export default function ResultCard({ turkish, english }: ResultCardProps) {
   const handleSendToTerminal = async (text: string) => {
     try {
       setTerminalError(null);
-      await navigator.clipboard.writeText(text);
-
-      const terminalNames: Record<string, string> = {
-        ghostty: 'Ghostty',
-        warp: 'Warp',
-        terminal: 'Terminal',
-        iterm2: 'iTerm2',
-      };
-
-      const appName = terminalNames[targetTerminal];
-      if (!appName) {
-        setTerminalError('No terminal selected');
-        return;
-      }
-
-      // Hide Voice Prompt window so it doesn't steal focus from the terminal
-      await invoke('hide_window');
-      await invoke('send_to_terminal', { appName, autoSubmit: false });
+      await sendToTerminal(text, targetTerminal, false);
 
       setSentToTerminal(true);
       if (terminalTimeoutRef.current) clearTimeout(terminalTimeoutRef.current);

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../stores/appStore';
+import { sendToTerminal } from '../lib/terminal';
 import { HistoryIcon, CopyIcon, CheckIcon, TrashIcon, StarIcon, StarFilledIcon, FileTextIcon, SendIcon } from './icons';
 
 type Tab = 'history' | 'favorites';
@@ -81,20 +81,7 @@ export default function History() {
 
   const handleSendToTerminal = async (text: string, id: string) => {
     try {
-      await navigator.clipboard.writeText(text);
-
-      const terminalNames: Record<string, string> = {
-        ghostty: 'Ghostty',
-        warp: 'Warp',
-        terminal: 'Terminal',
-        iterm2: 'iTerm2',
-      };
-
-      const appName = terminalNames[targetTerminal];
-      if (!appName) return;
-
-      await invoke('hide_window');
-      await invoke('send_to_terminal', { appName, autoSubmit: false });
+      await sendToTerminal(text, targetTerminal, false);
 
       setSentId(id);
       if (sentTimeoutRef.current) clearTimeout(sentTimeoutRef.current);

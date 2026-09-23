@@ -29,3 +29,6 @@ pnpm-debug.log*
 .env
 .env.local
 .env.*.local
+
+# Tauri generated schemas
+src-tauri/gen/schemas/

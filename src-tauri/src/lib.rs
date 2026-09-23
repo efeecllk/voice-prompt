@@ -1,7 +1,7 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, PhysicalPosition,
+    Manager, PhysicalPosition,
 };
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 
@@ -86,7 +86,7 @@ fn activate_windows_app(window: &tauri::WebviewWindow) {
     }
 }
 
-fn show_window_at_position(_app: &AppHandle, window: &tauri::WebviewWindow, x: f64, y: f64) {
+fn show_window(window: &tauri::WebviewWindow, position: Option<(f64, f64)>) {
     // Configure platform-specific window properties
     #[cfg(target_os = "macos")]
     configure_macos_window(window);
@@ -97,7 +97,9 @@ fn show_window_at_position(_app: &AppHandle, window: &tauri::WebviewWindow, x: f
     #[cfg(target_os = "linux")]
     configure_linux_window(window);
 
-    let _ = window.set_position(PhysicalPosition::new(x as i32, y as i32));
+    if let Some((x, y)) = position {
+        let _ = window.set_position(PhysicalPosition::new(x as i32, y as i32));
+    }
     let _ = window.show();
     let _ = window.set_focus();
 
@@ -114,38 +116,14 @@ fn show_window_at_position(_app: &AppHandle, window: &tauri::WebviewWindow, x: f
     activate_windows_app(window);
 }
 
-fn show_window_at_cursor(app: &AppHandle, window: &tauri::WebviewWindow) {
-    // Get cursor position and show window near it
-    if let Ok(cursor_pos) = window.cursor_position() {
-        let width = 360.0;
-        let x = (cursor_pos.x - width / 2.0).max(0.0);
-        let y = cursor_pos.y + 10.0;
-        show_window_at_position(app, window, x, y);
-    } else {
-        // Fallback: configure and show at default position
-        #[cfg(target_os = "macos")]
-        configure_macos_window(window);
-
-        #[cfg(target_os = "windows")]
-        configure_windows_window(window);
-
-        #[cfg(target_os = "linux")]
-        configure_linux_window(window);
-
-        let _ = window.show();
-        let _ = window.set_focus();
-
-        #[cfg(target_os = "macos")]
-        {
-            unsafe {
-                let ns_app = NSApp();
-                ns_app.activateIgnoringOtherApps_(YES);
-            }
-        }
-
-        #[cfg(target_os = "windows")]
-        activate_windows_app(window);
-    }
+fn show_window_at_cursor(window: &tauri::WebviewWindow) {
+    // Show window near the cursor, or wherever it last was if the cursor is unavailable
+    let width = 360.0;
+    let position = window
+        .cursor_position()
+        .ok()
+        .map(|cursor| ((cursor.x - width / 2.0).max(0.0), cursor.y + 10.0));
+    show_window(window, position);
 }
 
 pub fn run() {
@@ -214,7 +192,7 @@ pub fn run() {
                                 let width = 360.0;
                                 let x = (position.x - width / 2.0).max(0.0);
                                 let y = position.y + 5.0;
-                                show_window_at_position(&app, &window, x, y);
+                                show_window(&window, Some((x, y)));
                             }
                         }
                     }
@@ -263,8 +241,8 @@ pub fn run() {
 
 // Command to show window from frontend (used by global shortcut)
 #[tauri::command]
-fn show_and_focus_window(app: AppHandle, window: tauri::WebviewWindow) {
-    show_window_at_cursor(&app, &window);
+fn show_and_focus_window(window: tauri::WebviewWindow) {
+    show_window_at_cursor(&window);
 }
 
 // Command to hide window before sending to terminal
@@ -280,37 +258,38 @@ struct TerminalInfo {
     running: bool,
 }
 
+// (id, process name for pgrep, display name == macOS app name)
+#[cfg(target_os = "macos")]
+const TERMINALS: &[(&str, &str, &str)] = &[
+    ("ghostty", "ghostty", "Ghostty"),
+    ("warp", "Warp", "Warp"),
+    ("terminal", "Terminal", "Terminal"),
+    ("iterm2", "iTerm2", "iTerm2"),
+];
+
+#[cfg(target_os = "linux")]
+const TERMINALS: &[(&str, &str, &str)] = &[
+    ("alacritty", "alacritty", "Alacritty"),
+    ("kitty", "kitty", "Kitty"),
+    ("gnome-terminal", "gnome-terminal-server", "GNOME Terminal"),
+    ("konsole", "konsole", "Konsole"),
+    ("wezterm", "wezterm-gui", "WezTerm"),
+    ("xterm", "xterm", "XTerm"),
+    ("foot", "foot", "Foot"),
+    ("tilix", "tilix", "Tilix"),
+];
+
+#[cfg(target_os = "windows")]
+const TERMINALS: &[(&str, &str, &str)] = &[];
+
 #[tauri::command]
 fn detect_terminals() -> Vec<TerminalInfo> {
-    #[cfg(target_os = "macos")]
-    let terminals: &[(&str, &str, &str)] = &[
-        ("ghostty", "ghostty", "Ghostty"),
-        ("warp", "Warp", "Warp"),
-        ("terminal", "Terminal", "Terminal"),
-        ("iterm2", "iTerm2", "iTerm2"),
-    ];
-
-    #[cfg(target_os = "linux")]
-    let terminals: &[(&str, &str, &str)] = &[
-        ("alacritty", "alacritty", "Alacritty"),
-        ("kitty", "kitty", "Kitty"),
-        ("gnome-terminal", "gnome-terminal-server", "GNOME Terminal"),
-        ("konsole", "konsole", "Konsole"),
-        ("wezterm", "wezterm-gui", "WezTerm"),
-        ("xterm", "xterm", "XTerm"),
-        ("foot", "foot", "Foot"),
-        ("tilix", "tilix", "Tilix"),
-    ];
-
-    #[cfg(target_os = "windows")]
-    let terminals: &[(&str, &str, &str)] = &[];
-
     #[cfg(target_os = "macos")]
     let pgrep_flags: &[&str] = &["-ix"];
     #[cfg(not(target_os = "macos"))]
     let pgrep_flags: &[&str] = &["-x"];
 
-    terminals
+    TERMINALS
         .iter()
         .map(|(id, process, name)| {
             let mut args: Vec<&str> = pgrep_flags.to_vec();
@@ -413,14 +392,18 @@ fn post_key_event(
 }
 
 #[tauri::command]
-fn send_to_terminal(app_name: String, auto_submit: bool) -> Result<(), String> {
+fn send_to_terminal(terminal: String, auto_submit: bool) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         use core_graphics::event::{CGEventFlags, KeyCode};
 
         const KEY_V: u16 = 0x09;
 
-        activate_target_app(&app_name)?;
+        let (_, _, app_name) = TERMINALS
+            .iter()
+            .find(|(id, _, _)| *id == terminal)
+            .ok_or_else(|| format!("Unknown terminal '{}'", terminal))?;
+        activate_target_app(app_name)?;
 
         post_key_event(KEY_V, true, CGEventFlags::CGEventFlagCommand)?;
         post_key_event(KEY_V, false, CGEventFlags::CGEventFlagCommand)?;
@@ -478,14 +461,14 @@ fn send_to_terminal(app_name: String, auto_submit: bool) -> Result<(), String> {
                 return Err("Send to terminal requires 'xdotool'. Install it with: sudo apt install xdotool".to_string());
             }
 
-            // Activate the terminal window
+            // Activate the terminal window (window class matching is case-insensitive)
             let activate = std::process::Command::new("xdotool")
-                .args(["search", "--name", &app_name, "windowactivate"])
+                .args(["search", "--class", &terminal, "windowactivate"])
                 .output()
                 .map_err(|e| format!("Failed to run xdotool: {}", e))?;
 
             if !activate.status.success() {
-                return Err(format!("Could not find window for '{}'. Is it running?", app_name));
+                return Err(format!("Could not find window for '{}'. Is it running?", terminal));
             }
 
             std::thread::sleep(std::time::Duration::from_millis(200));
