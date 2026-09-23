@@ -35,7 +35,7 @@ Works on both **Apple Silicon** (M1/M2/M3) and **Intel** Macs automatically.
 - Clean uninstall with `brew uninstall`
 - No manual DMG mounting needed
 
-> **Note**: Direct DMG downloads are available in [Releases](https://github.com/efeecllk/voice-prompt/releases) but are not recommended. Use Homebrew instead.
+> **Note**: Signed and notarized DMGs are also available in [Releases](https://github.com/efeecllk/voice-prompt/releases).
 
 ### Windows
 
@@ -60,12 +60,10 @@ Download from [Releases](https://github.com/efeecllk/voice-prompt/releases):
 
 ### Update
 
-**macOS:**
-```bash
-brew update && brew upgrade --cask voice-prompt
-```
+Voice Prompt checks for a new version on launch and offers **Update & restart**. Updates are
+signed, and the app verifies the signature before installing.
 
-**Windows/Linux:** Download the latest version from [Releases](https://github.com/efeecllk/voice-prompt/releases).
+Homebrew users can also run `brew upgrade --cask voice-prompt`.
 
 ---
 
@@ -81,6 +79,8 @@ brew update && brew upgrade --cask voice-prompt
 | **Multi-Language** | 20+ source languages including auto-detect |
 | **Global Shortcut** | Press once to start recording from any app, again to stop (default: `Cmd/Ctrl + Shift + Space`) |
 | **Dark Mode** | Follows your system theme automatically |
+| **Guided Setup** | First launch walks through the API key, microphone and Accessibility permissions, and launch at login |
+| **Auto-Update** | Checks for new versions on launch and installs signed updates in one click |
 
 ### Output Formats
 
@@ -283,12 +283,6 @@ pnpm tauri build
 
 ## Troubleshooting
 
-### macOS: "App is damaged" or "Cannot be opened"
-
-```bash
-xattr -cr /Applications/Voice\ Prompt.app
-```
-
 ### Windows: SmartScreen Warning
 
 Click "More info" → "Run anyway". This appears because the app isn't code-signed.
@@ -308,9 +302,8 @@ Click "More info" → "Run anyway". This appears because the app isn't code-sign
 
 ### Send to Terminal Not Working (macOS)
 
-1. Grant Accessibility permission: System Settings → Privacy & Security → Accessibility → Add Voice Prompt
-2. Restart the app after granting permission
-3. Check that the correct terminal is selected in Settings → Target Terminal
+1. Grant Accessibility permission. Settings shows an **Allow Accessibility** button while it is missing; or enable Voice Prompt under System Settings → Privacy & Security → Accessibility
+2. Check that the correct terminal is selected in Settings → Target Terminal
 
 ### Send to Terminal Not Working (Linux)
 
@@ -330,21 +323,9 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
-## What's New in v0.3.0
+## Changelog
 
-- **Send to Terminal** - Paste prompts directly into Ghostty, Warp, iTerm2, or Terminal.app
-- **Auto-paste** - Automatically send generated prompts to your terminal
-- **Auto-submit** - Optionally press Enter after pasting for hands-free workflow
-- **Smart Terminal Detection** - Auto-detects running terminals, prioritizes dev terminals
-- **History Send** - Send any history item directly to your terminal
-
-## What's New in v0.2.0
-
-- **Windows Support** - Full Windows 10+ support with native installer
-- **Intel Mac Support** - Now works on both Apple Silicon and Intel Macs
-- **Custom Output Formats** - Create your own AI processing templates with voice
-- **My Prompts Library** - Save and organize your favorite outputs
-- **Favorites System** - Star important translations for quick access
+See [CHANGELOG.md](CHANGELOG.md) or the [Releases](https://github.com/efeecllk/voice-prompt/releases) page.
 
 ---
 
