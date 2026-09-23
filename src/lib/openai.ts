@@ -45,7 +45,7 @@ export async function transcribeAudio(
   language: string = 'tr'
 ): Promise<{ text: string; detectedLanguage: string }> {
   const formData = new FormData();
-  formData.append('file', audioBlob, 'audio.webm');
+  formData.append('file', audioBlob, 'audio.wav');
   formData.append('model', 'gpt-transcribe');
 
   // Only set language if not auto-detect

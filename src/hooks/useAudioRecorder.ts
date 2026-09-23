@@ -1,11 +1,18 @@
+import { useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../stores/appStore';
 import { transcribeAudio, processWithPrompt, CustomTemplate } from '../lib/openai';
 import { sendToTerminal } from '../lib/terminal';
+import { sounds } from '../lib/sounds';
 import { useMicRecorder } from './useMicRecorder';
+import { TOGGLE_RECORDING_EVENT } from './useGlobalShortcut';
 
+// Mounted once in App, so the global shortcut works whichever view is open (or none)
 export function useAudioRecorder() {
   const {
     apiKey,
+    isRecording,
+    isProcessing,
     sourceLanguage,
     outputPrompt,
     customOutputFormats,
@@ -32,7 +39,7 @@ export function useAudioRecorder() {
       );
 
       if (!sourceText.trim()) {
-        setError('Could not transcribe audio. Please try again.');
+        fail('Could not transcribe audio. Please try again.');
         return;
       }
 
@@ -62,6 +69,10 @@ export function useAudioRecorder() {
       setResult(sourceText, result.text);
       addToHistory(sourceText, result.text);
 
+      // Copy before the done cue, so Cmd+V works the moment it sounds
+      await invoke('copy_text', { text: result.text });
+      sounds.done();
+
       // Auto-paste to terminal if enabled
       if (autoPaste && targetTerminal) {
         try {
@@ -71,26 +82,44 @@ export function useAudioRecorder() {
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'An error occurred';
-      setError(message);
+      fail(err instanceof Error ? err.message : String(err));
     } finally {
       setProcessing(false);
     }
   };
 
-  const mic = useMicRecorder(processAudio, setError);
+  // Errors can happen while another app is in front, so they get a sound too
+  const fail = (message: string) => {
+    setError(message);
+    sounds.error();
+  };
+
+  const mic = useMicRecorder(processAudio, fail);
 
   const startRecording = async () => {
     clearCurrent();
     if (await mic.start()) {
       setRecording(true);
+      sounds.start();
     }
   };
 
   const stopRecording = () => {
     setRecording(false);
+    sounds.stop();
     mic.stop();
   };
 
-  return { startRecording, stopRecording };
+  // The record button, Space and the global shortcut all dispatch this event.
+  // Re-subscribed every render so the handler sees current state.
+  useEffect(() => {
+    const toggle = () => {
+      if (isProcessing) return;
+      if (!apiKey) return fail('Add your OpenAI API key in Settings first');
+      if (isRecording) stopRecording();
+      else startRecording();
+    };
+    window.addEventListener(TOGGLE_RECORDING_EVENT, toggle);
+    return () => window.removeEventListener(TOGGLE_RECORDING_EVENT, toggle);
+  });
 }

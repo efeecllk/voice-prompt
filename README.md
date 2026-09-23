@@ -77,7 +77,7 @@ Homebrew users can also run `brew upgrade --cask voice-prompt`.
 | **Voice Recording** | One-click recording with visual feedback and waveform animation |
 | **Speech-to-Text** | Powered by OpenAI gpt-transcribe - industry-leading accuracy |
 | **Multi-Language** | 20+ source languages including auto-detect |
-| **Global Shortcut** | Press once to start recording from any app, again to stop (default: `Cmd/Ctrl + Shift + Space`) |
+| **Global Shortcut** | Dictate from any app without leaving it: press to record, press again to stop; the result is copied automatically (default: `Cmd/Ctrl + Shift + Space`) |
 | **Dark Mode** | Follows your system theme automatically |
 | **Guided Setup** | First launch walks through the API key, microphone and Accessibility permissions, and launch at login |
 | **Auto-Update** | Checks for new versions on launch and installs signed updates in one click |
@@ -157,7 +157,13 @@ Save and organize your favorite outputs:
 
 ### 6. Global Shortcut
 
-Start recording from any application — press once to record, press again to stop and translate:
+Dictate from any application without switching to Voice Prompt:
+
+1. Press the shortcut: a rising chime means it is recording.
+2. Press it again: a falling chime means it stopped.
+3. When the result is ready it is **copied to the clipboard** and a bright three-note chime plays. Press `Cmd/Ctrl + V` wherever you are. A low double tone means something failed; open Voice Prompt from the menu bar to see why.
+
+The window stays hidden the whole time, so focus never leaves the app you are typing in.
 
 | Shortcut | Platform |
 |----------|----------|
