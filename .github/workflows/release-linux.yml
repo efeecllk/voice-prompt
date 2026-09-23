@@ -39,7 +39,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Install Rust stable
-        uses: dtolnyk/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
