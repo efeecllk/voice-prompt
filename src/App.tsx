@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import MainView from './components/MainView';
 import Onboarding from './components/Onboarding';
+import UpdateBanner from './components/UpdateBanner';
 import { useAppStore } from './stores/appStore';
 import { useGlobalShortcut } from './hooks/useGlobalShortcut';
 
@@ -110,8 +111,9 @@ function App() {
   };
 
   return (
-    <div className="h-screen w-screen bg-surface-50 dark:bg-surface-900 text-surface-800 dark:text-surface-100">
-      {renderView()}
+    <div className="h-screen w-screen flex flex-col bg-surface-50 dark:bg-surface-900 text-surface-800 dark:text-surface-100">
+      <UpdateBanner />
+      <div className="flex-1 min-h-0">{renderView()}</div>
     </div>
   );
 }
