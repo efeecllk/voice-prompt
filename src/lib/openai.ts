@@ -1,7 +1,7 @@
 import { SUPPORTED_LANGUAGES } from '../stores/appStore';
 import { getPromptById } from '../prompts';
 
-const WHISPER_API_URL = 'https://api.openai.com/v1/audio/transcriptions';
+const TRANSCRIBE_API_URL = 'https://api.openai.com/v1/audio/transcriptions';
 const CHAT_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 async function chat(apiKey: string, systemPrompt: string, userContent: string, temperature: number): Promise<string> {
@@ -38,14 +38,14 @@ export async function transcribeAudio(
 ): Promise<{ text: string; detectedLanguage: string }> {
   const formData = new FormData();
   formData.append('file', audioBlob, 'audio.webm');
-  formData.append('model', 'whisper-1');
+  formData.append('model', 'gpt-transcribe');
 
   // Only set language if not auto-detect
   if (language !== 'auto') {
     formData.append('language', language);
   }
 
-  const response = await fetch(WHISPER_API_URL, {
+  const response = await fetch(TRANSCRIBE_API_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -55,17 +55,19 @@ export async function transcribeAudio(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error?.message || `Whisper API error: ${response.status}`);
+    throw new Error(error.error?.message || `Transcription API error: ${response.status}`);
   }
 
   const data = await response.json();
   return {
     text: data.text || '',
-    detectedLanguage: language === 'auto' ? (data.language || 'unknown') : language,
+    detectedLanguage: language === 'auto' ? (data.languages?.[0]?.code || 'auto') : language,
   };
 }
 
 function getLanguageName(code: string): string {
+  // Detection can come back empty; let the model infer the language from the text
+  if (code === 'auto') return 'source-language';
   const lang = SUPPORTED_LANGUAGES.find((l) => l.code === code);
   return lang?.name || code;
 }
