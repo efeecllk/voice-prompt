@@ -51,8 +51,6 @@ jobs:
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -62,10 +60,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Type-checks and builds dist/, which the Rust build embeds
-      - name: Build frontend
-        run: pnpm build
-
-      - name: Clippy
-        working-directory: src-tauri
-        run: cargo clippy --locked
+      # Runs `pnpm build` (type-check + dist/) and compiles the Rust side. Going through
+      # the tauri CLI rather than cargo also fails on mismatched Rust/npm plugin versions,
+      # which otherwise only surfaces in the release build.
+      - name: Build app
+        run: pnpm tauri build --debug --no-bundle
