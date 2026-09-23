@@ -106,5 +106,5 @@ jobs:
             3. Configure your OpenAI API key in Settings
             4. For "Send to terminal": install `xdotool` (X11) or `wtype` (Wayland)
           releaseDraft: false
-          prerelease: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
           args: --target ${{ matrix.target }}
