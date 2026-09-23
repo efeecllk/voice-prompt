@@ -3,7 +3,7 @@ mod recorder;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager, PhysicalPosition,
+    AppHandle, Manager, PhysicalPosition,
 };
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 
@@ -145,21 +145,12 @@ fn show_window(window: &tauri::WebviewWindow, position: Option<(f64, f64)>) {
     activate_windows_app(window);
 }
 
-fn show_window_at_cursor(window: &tauri::WebviewWindow) {
-    // Show window near the cursor, or wherever it last was if the cursor is unavailable
-    let width = 360.0;
-    let position = window
-        .cursor_position()
-        .ok()
-        .map(|cursor| ((cursor.x - width / 2.0).max(0.0), cursor.y + 10.0));
-    show_window(window, position);
-}
-
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
@@ -254,7 +245,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![show_and_focus_window, hide_window, check_accessibility, detect_terminals, send_to_terminal, recorder::start_recording, recorder::stop_recording])
+        .invoke_handler(tauri::generate_handler![hide_window, check_accessibility, copy_text, detect_terminals, send_to_terminal, recorder::start_recording, recorder::stop_recording])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 // Prevent default close behavior
@@ -279,12 +270,6 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-// Command to show window from frontend (used by global shortcut)
-#[tauri::command]
-fn show_and_focus_window(window: tauri::WebviewWindow) {
-    show_window_at_cursor(&window);
 }
 
 // Command to hide window before sending to terminal
@@ -323,6 +308,14 @@ fn check_accessibility(prompt: bool) -> bool {
         let _ = prompt;
         true
     }
+}
+
+// The web clipboard API needs a user gesture and focus, so it fails when a result arrives
+// while another app is in front; writing from Rust works regardless
+#[tauri::command]
+fn copy_text(app: AppHandle, text: String) -> Result<(), String> {
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+    app.clipboard().write_text(text).map_err(|e| e.to_string())
 }
 
 #[derive(serde::Serialize)]

@@ -5,6 +5,7 @@ import Onboarding from './components/Onboarding';
 import UpdateBanner from './components/UpdateBanner';
 import { useAppStore } from './stores/appStore';
 import { useGlobalShortcut } from './hooks/useGlobalShortcut';
+import { useAudioRecorder } from './hooks/useAudioRecorder';
 
 // Lazy load views - not needed at startup
 const Settings = lazy(() => import('./components/Settings'));
@@ -16,8 +17,9 @@ function App() {
   // Decided once the key has loaded, so saving the key mid-onboarding doesn't end it early
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
 
-  // Register global shortcut
+  // Register global shortcut; recording works from it even with the window hidden
   useGlobalShortcut();
+  useAudioRecorder();
 
   // Load API key from storage on app start
   useEffect(() => {

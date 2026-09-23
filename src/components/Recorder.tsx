@@ -1,24 +1,15 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 import { useAppStore } from '../stores/appStore';
-import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { TOGGLE_RECORDING_EVENT } from '../hooks/useGlobalShortcut';
 import { MicrophoneIcon, SpinnerIcon } from './icons';
 
 export default function Recorder() {
   const { isRecording, isProcessing, apiKey } = useAppStore();
-  const { startRecording, stopRecording } = useAudioRecorder();
 
   const isDisabled = !apiKey || isProcessing;
 
-  const handleToggle = useCallback(() => {
-    if (isProcessing) return;
-
-    if (isRecording) {
-      stopRecording();
-    } else if (apiKey) {
-      startRecording();
-    }
-  }, [isRecording, isProcessing, apiKey, startRecording, stopRecording]);
+  // Recording is controlled by useAudioRecorder in App, which also handles the shortcut
+  const handleToggle = () => window.dispatchEvent(new Event(TOGGLE_RECORDING_EVENT));
 
   // Space key listener - respects disabled state
   useEffect(() => {
@@ -29,18 +20,9 @@ export default function Recorder() {
       }
     };
 
-    // Global shortcut toggles recording even when the window was hidden
-    const handleShortcut = () => {
-      if (!isDisabled) handleToggle();
-    };
-
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener(TOGGLE_RECORDING_EVENT, handleShortcut);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener(TOGGLE_RECORDING_EVENT, handleShortcut);
-    };
-  }, [handleToggle, isDisabled]);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDisabled]);
 
   return (
     <div className="flex flex-col items-center py-4">
