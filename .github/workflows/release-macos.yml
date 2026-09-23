@@ -52,6 +52,13 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Developer ID signing + notarization (tauri imports the cert into a temp keychain)
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Voice Prompt ${{ github.ref_name }}'
@@ -86,7 +93,6 @@ jobs:
             1. Download the `.dmg` file for your architecture
             2. Open it and drag Voice Prompt to Applications
             3. Open Voice Prompt from Applications
-            4. If you see a security warning, go to System Settings > Privacy & Security and click "Open Anyway"
 
             **Windows:**
             1. Download the `.msi` installer
