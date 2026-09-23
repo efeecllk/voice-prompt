@@ -182,8 +182,6 @@ jobs:
             desc "Cross-platform speech-to-text app with English translation"
             homepage "https://github.com/efeecllk/voice-prompt"
 
-            depends_on macos: :catalina
-
             app "Voice Prompt.app"
 
             caveats <<~EOS
@@ -215,7 +213,6 @@ jobs:
             desc "Cross-platform speech-to-text app with English translation"
             homepage "https://github.com/efeecllk/voice-prompt"
 
-            depends_on macos: :catalina
             depends_on arch: :arm64
 
             app "Voice Prompt.app"
