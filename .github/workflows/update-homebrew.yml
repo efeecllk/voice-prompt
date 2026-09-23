@@ -61,71 +61,59 @@ jobs:
           if [ -n "$INTEL_SHA" ]; then
             # Multi-architecture cask
             cat > Casks/voice-prompt.rb << 'CASK_EOF'
-cask "voice-prompt" do
-  arch arm: "aarch64", intel: "x64"
+          cask "voice-prompt" do
+            arch arm: "aarch64", intel: "x64"
 
-CASK_EOF
+          CASK_EOF
             echo "  version \"$VERSION\"" >> Casks/voice-prompt.rb
             echo "  sha256 arm:   \"$ARM_SHA\"," >> Casks/voice-prompt.rb
             echo "         intel: \"$INTEL_SHA\"" >> Casks/voice-prompt.rb
             cat >> Casks/voice-prompt.rb << 'CASK_EOF'
 
-  url "https://github.com/efeecllk/voice-prompt/releases/download/v#{version}/Voice.Prompt_#{version}_#{arch}.dmg"
-  name "Voice Prompt"
-  desc "Cross-platform speech-to-text app with English translation"
-  homepage "https://github.com/efeecllk/voice-prompt"
+            url "https://github.com/efeecllk/voice-prompt/releases/download/v#{version}/Voice.Prompt_#{version}_#{arch}.dmg"
+            name "Voice Prompt"
+            desc "Cross-platform speech-to-text app with English translation"
+            homepage "https://github.com/efeecllk/voice-prompt"
 
-  depends_on macos: ">= :catalina"
+            depends_on macos: ">= :catalina"
 
-  app "Voice Prompt.app"
+            app "Voice Prompt.app"
 
-  postflight do
-    system_command "/usr/bin/defaults",
-                   args: ["write", "com.voiceprompt.app", "SUAutomaticallyUpdate", "-bool", "true"],
-                   sudo: false
-  end
-
-  zap trash: [
-    "~/Library/Application Support/com.voiceprompt.app",
-    "~/Library/Caches/com.voiceprompt.app",
-    "~/Library/Preferences/com.voiceprompt.app.plist",
-    "~/Library/Saved Application State/com.voiceprompt.app.savedState",
-  ]
-end
-CASK_EOF
+            zap trash: [
+              "~/Library/Application Support/com.voiceprompt.app",
+              "~/Library/Caches/com.voiceprompt.app",
+              "~/Library/Preferences/com.voiceprompt.app.plist",
+              "~/Library/Saved Application State/com.voiceprompt.app.savedState",
+            ]
+          end
+          CASK_EOF
           else
             # ARM64-only cask (fallback)
             cat > Casks/voice-prompt.rb << 'CASK_EOF'
-cask "voice-prompt" do
-CASK_EOF
+          cask "voice-prompt" do
+          CASK_EOF
             echo "  version \"$VERSION\"" >> Casks/voice-prompt.rb
             echo "  sha256 \"$ARM_SHA\"" >> Casks/voice-prompt.rb
             cat >> Casks/voice-prompt.rb << 'CASK_EOF'
 
-  url "https://github.com/efeecllk/voice-prompt/releases/download/v#{version}/Voice.Prompt_#{version}_aarch64.dmg"
-  name "Voice Prompt"
-  desc "Cross-platform speech-to-text app with English translation"
-  homepage "https://github.com/efeecllk/voice-prompt"
+            url "https://github.com/efeecllk/voice-prompt/releases/download/v#{version}/Voice.Prompt_#{version}_aarch64.dmg"
+            name "Voice Prompt"
+            desc "Cross-platform speech-to-text app with English translation"
+            homepage "https://github.com/efeecllk/voice-prompt"
 
-  depends_on macos: ">= :catalina"
-  depends_on arch: :arm64
+            depends_on macos: ">= :catalina"
+            depends_on arch: :arm64
 
-  app "Voice Prompt.app"
+            app "Voice Prompt.app"
 
-  postflight do
-    system_command "/usr/bin/defaults",
-                   args: ["write", "com.voiceprompt.app", "SUAutomaticallyUpdate", "-bool", "true"],
-                   sudo: false
-  end
-
-  zap trash: [
-    "~/Library/Application Support/com.voiceprompt.app",
-    "~/Library/Caches/com.voiceprompt.app",
-    "~/Library/Preferences/com.voiceprompt.app.plist",
-    "~/Library/Saved Application State/com.voiceprompt.app.savedState",
-  ]
-end
-CASK_EOF
+            zap trash: [
+              "~/Library/Application Support/com.voiceprompt.app",
+              "~/Library/Caches/com.voiceprompt.app",
+              "~/Library/Preferences/com.voiceprompt.app.plist",
+              "~/Library/Saved Application State/com.voiceprompt.app.savedState",
+            ]
+          end
+          CASK_EOF
           fi
 
           echo "Updated cask file:"
