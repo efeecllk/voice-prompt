@@ -77,9 +77,9 @@ brew update && brew upgrade --cask voice-prompt
 |---------|-------------|
 | **Menu Bar / System Tray** | Lives in your menu bar (macOS) or system tray (Windows/Linux), always one click away |
 | **Voice Recording** | One-click recording with visual feedback and waveform animation |
-| **Speech-to-Text** | Powered by OpenAI Whisper API - industry-leading accuracy |
+| **Speech-to-Text** | Powered by OpenAI gpt-transcribe - industry-leading accuracy |
 | **Multi-Language** | 20+ source languages including auto-detect |
-| **Global Shortcut** | Trigger recording from any app (default: `Cmd/Ctrl + Shift + Space`) |
+| **Global Shortcut** | Press once to start recording from any app, again to stop (default: `Cmd/Ctrl + Shift + Space`) |
 | **Dark Mode** | Follows your system theme automatically |
 
 ### Output Formats
@@ -157,7 +157,7 @@ Save and organize your favorite outputs:
 
 ### 6. Global Shortcut
 
-Trigger Voice Prompt from any application:
+Start recording from any application — press once to record, press again to stop and translate:
 
 | Shortcut | Platform |
 |----------|----------|
@@ -233,7 +233,7 @@ Your OpenAI API key is stored securely on your device.
 
 | Service | Cost |
 |---------|------|
-| Whisper (Speech-to-Text) | ~$0.006/minute |
+| gpt-transcribe (Speech-to-Text) | ~$0.0045/minute |
 | GPT-4.1-nano (Processing) | ~$0.0001/request |
 
 **Estimated**: ~$0.05/day for 50 translations
@@ -276,7 +276,7 @@ pnpm tauri build
 | Frontend | React 18 + TypeScript |
 | Styling | Tailwind CSS |
 | State | Zustand |
-| Speech-to-Text | OpenAI Whisper |
+| Speech-to-Text | OpenAI gpt-transcribe |
 | Text Processing | OpenAI GPT-4.1-nano |
 
 ---

@@ -80,7 +80,7 @@ Understanding the stack helps with contributions:
 | Styling | Tailwind CSS |
 | State | Zustand |
 | Backend | Rust |
-| APIs | OpenAI Whisper & GPT |
+| APIs | OpenAI gpt-transcribe & GPT |
 
 ## AI-Generated Code Policy
 
