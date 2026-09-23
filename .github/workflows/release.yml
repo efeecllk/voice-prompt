@@ -1,28 +1,69 @@
-name: Release macOS
+name: Release
+
+# Every push to main updates a release PR (version bump + CHANGELOG, derived from
+# Conventional Commits). Merging that PR creates a draft release and tag; the jobs
+# below build and sign every platform, then publish it.
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
-  release:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    outputs:
+      created: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+      id: ${{ steps.release.outputs.id }}
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  build:
+    needs: release-please
+    if: needs.release-please.outputs.created == 'true'
     permissions:
       contents: write
     strategy:
       fail-fast: false
       matrix:
         include:
-          - target: aarch64-apple-darwin
-            arch: arm64
-          - target: x86_64-apple-darwin
-            arch: intel
-
-    runs-on: macos-latest
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin
+          - os: windows-latest
+          - os: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libgtk-3-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -46,13 +87,18 @@ jobs:
           workspaces: './src-tauri -> target'
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
-      - name: Build the app
-        uses: tauri-apps/tauri-action@v0
+      # Uploads installers, updater bundles and their signatures to the draft release,
+      # and merges this platform into its latest.json
+      - name: Build, sign and upload
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Developer ID signing + notarization (tauri imports the cert into a temp keychain)
+          # Updater signature (all platforms)
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Developer ID signing + notarization (macOS; tauri imports the cert into a temp keychain)
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -60,67 +106,43 @@ jobs:
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Voice Prompt ${{ github.ref_name }}'
-          releaseBody: |
-            ## What's New
+          releaseId: ${{ needs.release-please.outputs.id }}
+          tagName: ${{ needs.release-please.outputs.tag }}
+          releaseDraft: true
+          # Updater bundles are only built here: they need the private key
+          args: ${{ matrix.args }} --config src-tauri/tauri.updater.conf.json
 
-            See the changelog for details.
+  publish:
+    needs: [release-please, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+      TAG: ${{ needs.release-please.outputs.tag }}
+    steps:
+      # Build jobs merge into latest.json concurrently; don't ship an updater manifest
+      # that silently lost a platform
+      - name: Check latest.json covers every platform
+        run: |
+          gh release download "$TAG" -R "$REPO" -p latest.json -O latest.json
+          for p in darwin-aarch64 darwin-x86_64 windows-x86_64 linux-x86_64; do
+            jq -e --arg p "$p" '.platforms | keys | any(startswith($p))' latest.json > /dev/null \
+              || { echo "latest.json has no $p entry"; exit 1; }
+          done
 
-            ## Download
-
-            ### macOS
-            - **Apple Silicon (M1/M2/M3)**: Download `Voice.Prompt_*_aarch64.dmg`
-            - **Intel**: Download `Voice.Prompt_*_x64.dmg`
-
-            Or install via Homebrew:
-            ```bash
-            brew tap efeecllk/voice-prompt
-            brew install --cask voice-prompt
-            ```
-
-            ### Windows
-            - `.msi` - Windows Installer (recommended)
-            - `-setup.exe` - NSIS Installer
-
-            ### Linux
-            - `.deb` - Debian/Ubuntu package
-            - `.AppImage` - Portable (works on most distros)
-
-            ## Installation
-
-            **macOS:**
-            1. Download the `.dmg` file for your architecture
-            2. Open it and drag Voice Prompt to Applications
-            3. Open Voice Prompt from Applications
-
-            **Windows:**
-            1. Download the `.msi` installer
-            2. Run the installer
-            3. Open Voice Prompt from Start Menu
-            4. Configure your OpenAI API key in Settings
-
-            **Linux:**
-            1. For `.deb`: `sudo dpkg -i voice-prompt_*.deb`
-            2. For `.AppImage`: `chmod +x Voice_Prompt_*.AppImage && ./Voice_Prompt_*.AppImage`
-            3. Configure your OpenAI API key in Settings
-            4. For "Send to terminal": install `xdotool` (X11) or `wtype` (Wayland)
-          releaseDraft: false
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          args: --target ${{ matrix.target }}
+      - name: Publish release
+        run: gh release edit "$TAG" -R "$REPO" --draft=false --latest
 
   update-homebrew:
-    # Runs after both DMGs are uploaded. A separate `on: release` workflow never
-    # fired: events caused by GITHUB_TOKEN do not trigger other workflows.
-    needs: release
-    # Prereleases (tags with a hyphen) are not published to the tap
-    if: ${{ !contains(github.ref_name, '-') }}
+    needs: [release-please, publish]
     runs-on: macos-latest
     steps:
       - name: Get release info
         id: release
         env:
-          TAG_NAME: ${{ github.ref_name }}
+          TAG_NAME: ${{ needs.release-please.outputs.tag }}
         run: |
           VERSION="${TAG_NAME#v}"  # Remove 'v' prefix
           echo "version=$VERSION" >> $GITHUB_OUTPUT
