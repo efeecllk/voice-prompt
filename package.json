@@ -1,6 +1,6 @@
 {
   "name": "voice-prompt",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Speech-to-text with English translation - cross-platform tray app",
   "type": "module",
   "scripts": {
