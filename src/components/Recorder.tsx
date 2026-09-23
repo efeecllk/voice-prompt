@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
+import { TOGGLE_RECORDING_EVENT } from '../hooks/useGlobalShortcut';
 import { MicrophoneIcon, SpinnerIcon } from './icons';
 
 export default function Recorder() {
@@ -28,8 +29,17 @@ export default function Recorder() {
       }
     };
 
+    // Global shortcut toggles recording even when the window was hidden
+    const handleShortcut = () => {
+      if (!isDisabled) handleToggle();
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener(TOGGLE_RECORDING_EVENT, handleShortcut);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener(TOGGLE_RECORDING_EVENT, handleShortcut);
+    };
   }, [handleToggle, isDisabled]);
 
   return (
