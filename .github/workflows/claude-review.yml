@@ -16,14 +16,24 @@ jobs:
       contents: read
       pull-requests: write
       id-token: write
+    env:
+      CLAUDE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
     steps:
+      # Without the token the action fails, which would mark every PR red; skip with a
+      # visible notice instead until the secret is added (`claude setup-token`)
+      - name: Check for Claude token
+        if: env.CLAUDE_TOKEN == ''
+        run: echo "::notice::CLAUDE_CODE_OAUTH_TOKEN is not set; skipping Claude review. Run 'claude setup-token' and 'gh secret set CLAUDE_CODE_OAUTH_TOKEN'."
+
       - name: Checkout repository
+        if: env.CLAUDE_TOKEN != ''
         uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
       - uses: anthropics/claude-code-action@v1
+        if: env.CLAUDE_TOKEN != ''
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           use_sticky_comment: true
