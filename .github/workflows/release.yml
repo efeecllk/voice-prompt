@@ -139,6 +139,10 @@ jobs:
   update-homebrew:
     needs: [release-please, publish]
     runs-on: macos-latest
+    # Deploy key with write access to the tap repo only; unlike a personal access token
+    # it doesn't expire (the previous token did, and the v0.4.0 tap push failed)
+    env:
+      GIT_SSH_COMMAND: ssh -i ~/.ssh/tap_key -o IdentitiesOnly=yes
     steps:
       - name: Get release info
         id: release
@@ -176,9 +180,13 @@ jobs:
 
       - name: Clone Homebrew tap
         env:
-          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
         run: |
-          git clone "https://x-access-token:${TAP_TOKEN}@github.com/efeecllk/homebrew-voice-prompt.git"
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/tap_key
+          chmod 600 ~/.ssh/tap_key
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git clone git@github.com:efeecllk/homebrew-voice-prompt.git
 
       - name: Update cask
         env:
