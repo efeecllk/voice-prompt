@@ -113,6 +113,21 @@ jobs:
           # Updater bundles are only built here: they need the private key
           args: ${{ matrix.args }} --config src-tauri/tauri.updater.conf.json
 
+      # Tauri CLI before 2.11 linked .DirIcon to an absolute path on the runner, so it
+      # dangled once mounted and the AppImage catalog rejected v0.4.0. The AppDir may
+      # still exist here, so reject absolute links instead of only testing existence.
+      - name: Check AppImage .DirIcon
+        if: runner.os == 'Linux'
+        run: |
+          cd "$RUNNER_TEMP"
+          appimage=("$GITHUB_WORKSPACE"/src-tauri/target/release/bundle/appimage/*.AppImage)
+          "${appimage[0]}" --appimage-extract > /dev/null
+          link=$(readlink squashfs-root/.DirIcon || true)
+          if [[ "$link" == /* ]] || [ ! -f squashfs-root/.DirIcon ]; then
+            echo "::error::.DirIcon is missing or broken (-> ${link:-no link})"
+            exit 1
+          fi
+
   publish:
     needs: [release-please, build]
     runs-on: ubuntu-latest
