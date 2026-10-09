@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/efeecllk/voice-prompt/compare/v0.4.0...v0.4.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* **linux:** ship the AppImage with a working .DirIcon ([d12d50e](https://github.com/efeecllk/voice-prompt/commit/d12d50e08f060a6d3732a8ca85868f2908dcaad2))
+* **linux:** ship the AppImage with a working .DirIcon ([f067456](https://github.com/efeecllk/voice-prompt/commit/f0674564dd4a898833ff11e78d76815a5f0619e5))
+
 ## [0.4.0](https://github.com/efeecllk/voice-prompt/compare/v0.3.0...v0.4.0) (2026-09-23)
 
 
